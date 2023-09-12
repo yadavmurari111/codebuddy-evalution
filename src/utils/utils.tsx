@@ -26,6 +26,9 @@ export const validURL = (str: string) => {
 
 export const numberOfBars = (duration: number) => {
   switch (true) {
+    case duration < 5:
+      return duration + 3;
+
     case duration < 10:
       return duration;
 
@@ -39,8 +42,9 @@ export const numberOfBars = (duration: number) => {
       return Math.floor(duration / 2);
 
     case duration > 60:
-      return 25;
+      return 22;
+
     default:
-      return 25;
+      return 22;
   }
 };

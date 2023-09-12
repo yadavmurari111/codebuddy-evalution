@@ -22,6 +22,7 @@ export interface Data {
   isPlaying: boolean;
   isFinished: boolean;
   duration: number;
+  percentageProgress: number;
   currentTime: number;
   loading: boolean;
   error: boolean;

@@ -1,26 +1,16 @@
 import React from 'react';
-import {Text, View} from 'react-native';
+import {View} from 'react-native';
 import AudioMsgComponent from './components/audio-msg/audio-msg.component';
 
 const ChatScreen = ({navigation}: any) => {
   return (
     <View style={{flex: 1, padding: 10, backgroundColor: 'white'}}>
-      <View style={{}}>
-        <Text
-          style={{
-            padding: 12,
-            fontSize: 20,
-            color: 'black',
-            backgroundColor: 'white',
-          }}
-        />
-      </View>
       <AudioMsgComponent
         navigation={navigation}
         soundUrl={
           'https://d14egp0a1bks93.cloudfront.net/app/sample_billie_voice.mp3'
         }
-        soundDuration={4}
+        soundDuration={3.997}
       />
       <AudioMsgComponent
         navigation={navigation}
@@ -34,7 +24,7 @@ const ChatScreen = ({navigation}: any) => {
         soundUrl={
           'https://cdn.pixabay.com/audio/2023/05/06/audio_76f30e097d.mp3'
         }
-        soundDuration={9}
+        soundDuration={9.66}
       />
       <AudioMsgComponent
         navigation={navigation}
