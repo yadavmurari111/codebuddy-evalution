@@ -142,11 +142,6 @@ const useSound = (
     [sound],
   );
 
-  const percentageProgress = Number(
-    ((currentTime / duration) * 100).toFixed(2),
-  );
-  console.log(currentTime, '--currentTime--');
-
   const returnedValue: ReturnedValue = [
     play,
     pause,
@@ -158,7 +153,6 @@ const useSound = (
       isFinished,
       duration,
       currentTime,
-      percentageProgress,
       loading,
       error,
     },

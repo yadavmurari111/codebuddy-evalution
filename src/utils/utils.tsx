@@ -30,16 +30,16 @@ export const numberOfBars = (duration: number) => {
       return duration + 3;
 
     case duration < 10:
-      return duration;
+      return duration + 3;
 
     case duration < 20:
-      return Math.floor(duration / 1.5);
+      return Math.floor(duration / 1.7);
 
     case duration < 40:
-      return Math.floor(duration / 1.5);
+      return Math.floor(duration / 1.5 - 3);
 
     case duration < 50:
-      return Math.floor(duration / 2);
+      return Math.floor(duration / 2 - 5);
 
     case duration > 60:
       return 22;
