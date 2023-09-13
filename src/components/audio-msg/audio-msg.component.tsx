@@ -1,10 +1,4 @@
-import React, {
-  FunctionComponent,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, {FunctionComponent, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -34,10 +28,10 @@ const AudioMsgComponent: FunctionComponent<IAudioMsg> = ({
   const [play, pause, stop, data] = useSound(soundUrl) as ReturnedValue;
   const {isPlaying, currentTime, loading} = data;
 
-  // Initialize an Animated.Value to track the width of the Animated.View
-  const widthValue = useRef(new Animated.Value(0)).current;
+  const widthValue = useRef(new Animated.Value(0)).current; // Initialize an Animated.Value to track the width of the Animated.View
   const [waveWidth, setWaveWidth] = useState(0);
   const [isAnimationFinished, setIsAnimationFinished] = useState(false);
+  const [totalTime, setTotalTime] = useState(soundDuration);
 
   const startAnimation = () => {
     if (isAnimationFinished) {
@@ -47,21 +41,22 @@ const AudioMsgComponent: FunctionComponent<IAudioMsg> = ({
     // Animate the width from 0 to 100% over soundDuration (in seconds)
     Animated.timing(widthValue, {
       toValue: 1, // 1 represents 100% width
-      duration: soundDuration * 1000, //  duration of animation
+      duration: totalTime * 1000, //  duration of animation
       useNativeDriver: false, // Required for Android
     }).start(result => {
+      setTotalTime(soundDuration);
       setIsAnimationFinished(result.finished); // upon Animation is completed
     });
   };
 
   const stopAnimation = () => {
     widthValue.stopAnimation(value => {
-      // Store the current value when animation is stopped
-      widthValue.setValue(value);
+      setTotalTime(soundDuration - currentTime); // when audio paused need to update totalTime for correct animation
+      widthValue.setValue(value); // Store the current value when animation is stopped
     });
   };
 
-  const handlePlayPause = useCallback(() => {
+  const handlePlayPause = () => {
     if (isPlaying) {
       pause();
       stopAnimation();
@@ -71,7 +66,7 @@ const AudioMsgComponent: FunctionComponent<IAudioMsg> = ({
         startAnimation();
       }
     }
-  }, [isPlaying, loading]);
+  };
 
   const renderLines = useMemo(() => {
     const lines = []; // Create an array of line elements
@@ -89,7 +84,7 @@ const AudioMsgComponent: FunctionComponent<IAudioMsg> = ({
           style={{
             ...styles.timelineLine,
             height: currentNumber * scaleFactor,
-            backgroundColor: presetBase.colors.grey80,
+            backgroundColor: presetBase.colors.white,
           }}
         />,
       );
@@ -116,7 +111,7 @@ const AudioMsgComponent: FunctionComponent<IAudioMsg> = ({
             <ActivityIndicator size={'small'} color={presetBase.colors.white} />
           </View>
         )}
-        {!isPlaying && waveWidth === 0 && (
+        {waveWidth === 0 && (
           <View
             onLayout={e => setWaveWidth(e.nativeEvent.layout.width)}
             style={styles.lineContainer}>
@@ -127,9 +122,10 @@ const AudioMsgComponent: FunctionComponent<IAudioMsg> = ({
           <View style={{width: waveWidth}}>
             <MaskedView
               style={{
-                backgroundColor: isPlaying
-                  ? presetBase.colors.grey80
-                  : presetBase.colors.white,
+                backgroundColor:
+                  currentTime > 0 || currentTime === soundDuration
+                    ? presetBase.colors.grey80
+                    : presetBase.colors.white,
               }}
               maskElement={
                 <View style={styles.maskedLineContainer}>{renderLines}</View> //mask component
@@ -190,9 +186,12 @@ const styles = StyleSheet.create({
     width: 3, // bar width
     marginHorizontal: 1.2, // Adjust the margin between lines
   },
-  playPauseContainer: {padding: 10, minWidth: 40},
+  playPauseContainer: {padding: 6, minWidth: 40},
   waveProgressBox: {position: 'absolute'},
-  lineContainer: {alignItems: 'center', flexDirection: 'row'},
+  lineContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
   maskedLineContainer: {
     alignItems: 'center',
     flexDirection: 'row',
