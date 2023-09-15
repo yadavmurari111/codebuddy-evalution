@@ -4,5 +4,6 @@ const ROUTE_NAME = {
 
   LOGIN_SCREEN: 'LoginScreen',
   CHAT_SCREEN: 'ChatScreen',
+  VIDEO_TRIM_SCREEN: 'VideoTrimScreen',
 };
 export default ROUTE_NAME;

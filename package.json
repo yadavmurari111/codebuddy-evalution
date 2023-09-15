@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "clean": "cd android && ./gradlew clean && cd..",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
@@ -19,6 +20,7 @@
     "@use-it/interval": "^1.0.0",
     "react": "18.1.0",
     "react-native": "0.70.10",
+    "react-native-create-thumbnail": "^1.6.4",
     "react-native-image-picker": "^7.0.0",
     "react-native-screens": "^3.25.0",
     "react-native-sound": "^0.11.2",

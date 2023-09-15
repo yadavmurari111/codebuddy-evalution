@@ -1,10 +1,11 @@
 import React, {useCallback, useState} from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Slider,
   StyleSheet,
   TouchableOpacity,
   View,
+  Text,
 } from 'react-native';
 import AntDesignIcons from 'react-native-vector-icons/AntDesign';
 import * as ImagePicker from 'react-native-image-picker';
@@ -12,12 +13,15 @@ import {ImagePickerResponse} from 'react-native-image-picker/src/types';
 import {Asset} from 'react-native-image-picker';
 import {presetBase} from '../../utils/color';
 import Video from 'react-native-video';
+import ROUTE_NAME from '../../navigation/navigation-constants';
 
 const SendVideoComponent = ({navigation}: any) => {
   const [videoUri, setVideoUri] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
-
   const [paused, setPaused] = useState(true);
+  const {uri, width, height} =
+    videoUri.length > 0 ? videoUri[0] : {uri: '', width: 0, height: 0};
+  const aspectRatio = width / height;
 
   const onVideoSelectedFromDevice = useCallback(
     async (result: ImagePickerResponse) => {
@@ -25,9 +29,17 @@ const SendVideoComponent = ({navigation}: any) => {
         console.log(result);
         setVideoUri(result.assets);
         setLoading(false);
+        if (
+          result?.assets[0].duration !== undefined &&
+          result.assets[0].duration > 10
+        ) {
+          navigation.navigate(ROUTE_NAME.VIDEO_TRIM_SCREEN, {
+            videoData: result.assets,
+          });
+        }
       }
     },
-    [],
+    [navigation],
   );
 
   const onAddVideo = async () => {
@@ -49,14 +61,12 @@ const SendVideoComponent = ({navigation}: any) => {
           <View style={{justifyContent: 'center', alignItems: 'center'}}>
             <Video
               paused={paused}
-              source={{uri: videoUri[0].uri}} // Can be a URL or a local file.
-              ref={ref => {}} // Store reference
-              // Callback when video cannot be loaded
+              resizeMode={'stretch'}
+              source={{uri: uri}} // Can be a URL or a local file.
               style={{
                 borderWidth: 2,
-                width: '70%',
-                // height: videoUri[0].height,
-                aspectRatio: videoUri[0].width / videoUri[0].height,
+                width: '85%',
+                aspectRatio: aspectRatio,
                 borderRadius: 12,
               }}
             />
@@ -82,5 +92,23 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center', // Adjust this as needed
     marginBottom: 2, // Adjust this as needed to create spacing between bubbles
+  },
+
+  video: {
+    width: 300,
+    height: 200,
+  },
+  trimControls: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  slider: {
+    width: 250,
+  },
+  trimButton: {
+    marginTop: 20,
+    backgroundColor: 'blue',
+    padding: 10,
+    borderRadius: 5,
   },
 });
