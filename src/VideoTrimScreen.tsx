@@ -1,6 +1,11 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,16 +15,21 @@ import {
 } from 'react-native';
 import {createThumbnail, Thumbnail} from 'react-native-create-thumbnail';
 
-import Video from 'react-native-video';
-import AntDesignIcons from 'react-native-vector-icons/AntDesign';
+import Video, {OnProgressData} from 'react-native-video';
+import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import {presetBase} from './utils/color';
-import CustomRangeSlider from './components/send-video/custom-slider.component';
 import {formatTime} from './utils/utils';
-import YourCustomRangeSlider from './components/send-video/slider.component';
-import CombinedRangeSlider from './components/send-video/merge-slider.component';
-import VideoTrimmer from './components/send-video/merge-slider.component';
+import CustomRangeSlider from './components/custom-slider/custom-slider.component';
 
-const VideoTrimScreen = ({navigation, route}: any) => {
+interface IVideoTrimScreen {
+  navigation: any;
+  route: any;
+}
+
+const VideoTrimScreen: FunctionComponent<IVideoTrimScreen> = ({
+  route,
+}: IVideoTrimScreen) => {
+  const {width} = useWindowDimensions();
   const videoData = route.params.videoData;
   const videoRef = useRef(null);
   const [duration] = useState(videoData[0].duration);
@@ -37,98 +47,72 @@ const VideoTrimScreen = ({navigation, route}: any) => {
     }
   };
 
-  // const onStop = () => {
-  //   videoRef.current.seek(trimEnd);
-  //   setIsPlaying(false);
-  // };
-
-  const generateThumbnails = async (videoUri, count) => {
-    const thumbnailCount = count || 5;
-    const interval = Math.floor(duration / thumbnailCount);
-    const thumbnailPromises = [];
-
-    for (let i = 0; i < thumbnailCount; i++) {
-      const time = i * interval * 1000;
-      thumbnailPromises.push(
-        createThumbnail({
-          url: videoUri,
-          timeStamp: time,
-        }),
-      );
-    }
-
-    try {
-      const thumbnailResults = await Promise.all(thumbnailPromises);
-      return thumbnailResults.map(result => result);
-    } catch (error) {
-      console.error('Error generating thumbnails:', error);
-      return [];
+  const onProgress = ({currentTime}: OnProgressData) => {
+    // Check if we have reached the trimEnd, than reset trimStart and stop playing
+    if (currentTime >= trimEnd) {
+      if (videoRef.current) {
+        videoRef.current.seek(trimStart);
+        setPaused(!paused);
+      }
     }
   };
-  const {width} = useWindowDimensions();
+
+  // generate thumbnails for the timeline on the slider-bar
+  const generateThumbnails = useCallback(
+    async (videoUrl: string, count: number) => {
+      const thumbnailCount = count || 8;
+      const interval = Math.floor(duration / thumbnailCount);
+      const thumbnailPromises = [];
+
+      for (let i = 0; i < thumbnailCount; i++) {
+        const time = i * interval * 1000;
+        thumbnailPromises.push(
+          createThumbnail({
+            url: videoUrl,
+            timeStamp: time,
+          }),
+        );
+      }
+
+      try {
+        const thumbnailResults = await Promise.all(thumbnailPromises);
+        return thumbnailResults.map(result => result);
+      } catch (error) {
+        console.error('Error generating thumbnails:', error);
+        return [];
+      }
+    },
+    [duration],
+  );
 
   useEffect(() => {
     const num = Math.floor(width / 40);
     generateThumbnails(videoUri, num)
-      .then(thumbnail => {
-        setThumbnails(thumbnail);
-        console.log('Generated Thumbnails:', thumbnail);
-        // You can use the thumbnails array as needed
-      })
-      .catch(error => {
-        console.error('Thumbnail generation error:', error);
-      });
-  }, [videoUri]);
+      .then(thumbnail => setThumbnails(thumbnail))
+      .catch(error => console.error('Thumbnail generation error:', error));
+  }, [generateThumbnails, videoUri, width]);
 
   return (
-    <ScrollView
-      style={{
-        flex: 1,
-        padding: 12,
-        backgroundColor: 'white',
-        paddingBottom: 200,
-      }}>
-      <View
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
+    <ScrollView style={styles.container}>
+      <View style={styles.playerContainer}>
         <Video
           resizeMode={'stretch'}
           ref={videoRef}
           paused={paused}
           source={{uri: videoUri}} // Can be a URL or a local file.
-          onLoad={() => {
-            videoRef.current.seek(0); // this will set first frame of video as thumbnail
-          }}
-          onProgress={({currentTime}) => {
-            // Check if we have reached the end point, and stop playing
-            if (currentTime >= trimEnd) {
-              if (videoRef.current) {
-                videoRef.current.seek(trimStart);
-                setPaused(!paused);
-              }
-            }
-          }}
+          onLoad={() => videoRef.current.seek(0)} // this will set first frame of video as thumbnail
+          onProgress={onProgress}
           style={{
-            borderWidth: 1,
-            width: '80%',
+            ...styles.video,
             aspectRatio: videoData[0].width / videoData[0].height,
-            borderRadius: 12,
           }}
         />
-        <View
-          style={{
-            flex: 1,
-            position: 'absolute',
-            backgroundColor: presetBase.colors.white,
-            zIndex: 999,
-          }}>
+        <View style={styles.playPauseContainer}>
           <TouchableOpacity onPress={() => onPlayPause()}>
             <AntDesignIcons
               name={paused ? 'play' : 'pause'}
               color={presetBase.colors.black}
-              size={60}
+              size={40}
             />
           </TouchableOpacity>
         </View>
@@ -143,47 +127,17 @@ const VideoTrimScreen = ({navigation, route}: any) => {
         startValue={trimStart}
         endValue={trimEnd}
         thumbnails={thumbnails}
-        onValuesChange={(start: number, end: number) => {
-          console.log(start, end);
-          console.log('start', 'end');
-          console.log('------');
+        onValuesChange={(start, end) => {
           setTrimStart(start);
           setTrimEnd(end);
-        }}
-      />
-      <YourCustomRangeSlider
-        minValue={0}
-        maxValue={duration}
-        startValue={trimStart}
-        endValue={trimEnd}
-        thumbnails={thumbnails}
-        onValuesChange={(start: number, end: number) => {
-          console.log(start, end);
-          console.log('start', 'end');
-          console.log('------');
-          setTrimStart(start);
-          setTrimEnd(end);
+          setPaused(true);
+          videoRef.current.seek(start);
         }}
       />
 
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'flex-end',
-          flexDirection: 'row',
-          marginTop: 20,
-        }}>
-        <TouchableOpacity style={{borderRadius: 100}}>
-          <Text
-            style={{
-              color: 'white',
-              fontWeight: '700',
-              padding: 12,
-              backgroundColor: presetBase.colors.blueBase,
-              borderRadius: 100,
-            }}>
-            SEND
-          </Text>
+      <View style={styles.sendButtonContainer}>
+        <TouchableOpacity>
+          <Text style={styles.sendButtonText}>SEND</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -194,13 +148,28 @@ export default VideoTrimScreen;
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center', // Adjust this as needed
-    marginBottom: 2, // Adjust this as needed to create spacing between bubbles
+    flex: 1,
+    padding: 12,
+    backgroundColor: 'white',
+    paddingBottom: 200,
   },
-
+  playerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   video: {
-    width: 300,
-    height: 200,
+    borderWidth: 1,
+    width: '80%',
+    borderRadius: 12,
+  },
+  playPauseContainer: {
+    zIndex: 999,
+    flex: 1,
+    padding: 10,
+    opacity: 0.7,
+    borderRadius: 100,
+    position: 'absolute',
+    backgroundColor: presetBase.colors.white,
   },
   trimControls: {
     flex: 1,
@@ -208,15 +177,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
     justifyContent: 'space-around',
   },
-  slider: {
-    width: 300,
-    height: 40,
-    backgroundColor: 'black',
-  },
-  trimButton: {
+  sendButtonContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    flexDirection: 'row',
     marginTop: 20,
-    backgroundColor: 'blue',
-    padding: 10,
-    borderRadius: 5,
+  },
+  sendButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    padding: 12,
+    backgroundColor: presetBase.colors.blueBase,
+    borderRadius: 10,
   },
 });
