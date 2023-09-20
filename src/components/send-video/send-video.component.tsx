@@ -1,41 +1,50 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  NativeEventEmitter,
+  NativeModules,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import * as ImagePicker from 'react-native-image-picker';
-import {Asset} from 'react-native-image-picker';
 import {ImagePickerResponse} from 'react-native-image-picker/src/types';
 import {presetBase} from '../../utils/color';
 import Video from 'react-native-video';
-import ROUTE_NAME from '../../navigation/navigation-constants';
+import {showEditor} from 'react-native-video-trim';
+import {compressVideo} from '../../utils/utils';
 
-const SendVideoComponent = ({navigation}: any) => {
+const SendVideoComponent: FunctionComponent<any> = () => {
   const videoRef = useRef(null);
 
-  const [videoUri, setVideoUri] = useState<Asset[]>([]);
+  const [videoUri, setVideoUri] = useState('');
   const [loading, setLoading] = useState(false);
   const [paused, setPaused] = useState(true);
-  const {uri} = videoUri.length > 0 ? videoUri[0] : {uri: ''};
   const aspectRatio = 1;
 
-  const showAlert = (assets: Asset[]) => {
+  const showAlert = (uri: string) => {
     Alert.alert(
       'Video longer than 30 seconds!',
       'Navigate to video trim screen ?',
       [
         {
           text: 'OK',
-          onPress: () => {
-            navigation.navigate(ROUTE_NAME.VIDEO_TRIM_SCREEN, {
-              videoData: assets,
-            });
+          onPress: async () => {
+            await showEditor(uri || '', {maxDuration: 30});
           },
+        },
+        {
+          text: 'cancel',
         },
       ],
       {cancelable: false}, // Prevents dismissing the alert by tapping outside of it
@@ -44,30 +53,75 @@ const SendVideoComponent = ({navigation}: any) => {
 
   const onVideoSelectedFromDevice = useCallback(
     async (result: ImagePickerResponse) => {
-      if (result?.assets !== undefined) {
-        console.log(result);
-        setVideoUri(result.assets);
-        setLoading(false);
-        if (
-          result?.assets[0].duration !== undefined &&
-          result.assets[0].duration > 30
-        ) {
-          // navigate to trim screen if duration is more than 30 sec
-          showAlert(result.assets);
+      if (
+        result?.assets !== undefined &&
+        result?.assets[0].duration !== undefined
+      ) {
+        console.log(result, 'result');
+        if (result.assets[0].duration > 30) {
+          showAlert(result.assets[0].uri || '');
+        } else {
+          setLoading(true);
+          compressVideo(result.assets[0].uri || '').then(compressVideoUrl => {
+            setVideoUri(compressVideoUrl);
+            setLoading(false);
+          });
         }
       }
     },
-    [navigation],
+    [],
   );
 
   const onAddVideo = async () => {
     setLoading(true);
+    setVideoUri('');
     await ImagePicker.launchImageLibrary(
       {mediaType: 'video'},
       onVideoSelectedFromDevice,
     );
     setLoading(false);
   };
+
+  useEffect(() => {
+    const eventEmitter = new NativeEventEmitter(NativeModules.VideoTrim);
+    const subscription = eventEmitter.addListener('VideoTrim', event => {
+      switch (event.name) {
+        case 'onShow': {
+          console.log('onShowListener', event);
+          break;
+        }
+        case 'onHide': {
+          console.log('onHide', event);
+          break;
+        }
+        case 'onStartTrimming': {
+          setLoading(true);
+          console.log('onStartTrimming', event);
+          break;
+        }
+        case 'onFinishTrimming': {
+          console.log('onFinishTrimming', event);
+          compressVideo(event.outputPath).then(compressVideoUrl => {
+            setVideoUri(compressVideoUrl);
+            setLoading(false);
+          });
+          break;
+        }
+        case 'onCancelTrimming': {
+          console.log('onCancelTrimming', event);
+          break;
+        }
+        case 'onError': {
+          console.log('onError', event);
+          break;
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <View
@@ -92,9 +146,10 @@ const SendVideoComponent = ({navigation}: any) => {
             <Video
               paused={paused}
               resizeMode={'cover'}
-              source={{uri: uri}} // Can be a URL or a local file.
+              source={{uri: videoUri}} // Can be a URL or a local file.
               onLoad={() => {
                 if (videoRef.current) {
+                  // @ts-ignore
                   videoRef.current.seek(0);
                 }
               }}

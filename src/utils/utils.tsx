@@ -1,3 +1,5 @@
+import {Video} from 'react-native-compressor';
+
 export const webClientId =
   '740686211971-3dpncpat9qqb7kg939jfnmflg3tjbalm.apps.googleusercontent.com';
 
@@ -47,4 +49,19 @@ export const numberOfBars = (duration: number) => {
     default:
       return 22;
   }
+};
+
+export const compressVideo = async (videoUrl: string) => {
+  console.log('Compression start');
+  let progressDone = 0;
+
+  const result = await Video.compress(
+    videoUrl,
+    {progressDivider: 5},
+    progress => {
+      console.log('Compression Progress: ', (progressDone = progress));
+    },
+  );
+  console.log('Compression done:', result);
+  return result;
 };

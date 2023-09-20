@@ -13,12 +13,12 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import {createThumbnail, Thumbnail} from 'react-native-create-thumbnail';
+//import {createThumbnail, Thumbnail} from 'react-native-create-thumbnail';
 
 import Video, {OnProgressData} from 'react-native-video';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import {presetBase} from './utils/color';
-import {formatTime} from './utils/utils';
+import {compressVideo, formatTime} from './utils/utils';
 import CustomRangeSlider from './components/custom-slider/custom-slider.component';
 
 interface IVideoTrimScreen {
@@ -38,19 +38,27 @@ const VideoTrimScreen: FunctionComponent<IVideoTrimScreen> = ({
   const [paused, setPaused] = useState(true);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(30);
-  const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
+  //const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
+  const [compressionProgress, setCompressionProgress] = useState('');
 
   const onPlayPause = () => {
     if (videoRef.current) {
+      // @ts-ignore
       videoRef.current.seek(trimStart);
       setPaused(!paused);
     }
+  };
+
+  const handleCompression = () => {
+    console.log('clicked');
+    compressVideo(videoUri).then(progress => setCompressionProgress(progress));
   };
 
   const onProgress = ({currentTime}: OnProgressData) => {
     // Check if we have reached the trimEnd, than reset trimStart and stop playing
     if (currentTime >= trimEnd) {
       if (videoRef.current) {
+        // @ts-ignore
         videoRef.current.seek(trimStart);
         setPaused(!paused);
       }
@@ -85,12 +93,12 @@ const VideoTrimScreen: FunctionComponent<IVideoTrimScreen> = ({
     [duration],
   );
 
-  useEffect(() => {
-    const num = Math.floor(width / 40);
-    generateThumbnails(videoUri, num)
-      .then(thumbnail => setThumbnails(thumbnail))
-      .catch(error => console.error('Thumbnail generation error:', error));
-  }, [generateThumbnails, videoUri, width]);
+  // useEffect(() => {
+  //   const num = Math.floor(width / 40);
+  //   generateThumbnails(videoUri, num)
+  //     .then(thumbnail => setThumbnails(thumbnail))
+  //     .catch(error => console.error('Thumbnail generation error:', error));
+  // }, [generateThumbnails, videoUri, width]);
 
   return (
     <ScrollView style={styles.container}>
@@ -100,7 +108,12 @@ const VideoTrimScreen: FunctionComponent<IVideoTrimScreen> = ({
           ref={videoRef}
           paused={paused}
           source={{uri: videoUri}} // Can be a URL or a local file.
-          onLoad={() => videoRef.current.seek(0)} // this will set first frame of video as thumbnail
+          onLoad={() => {
+            if (videoRef.current) {
+              // @ts-ignore
+              videoRef.current.seek(0);
+            }
+          }} // this will set first frame of video as thumbnail
           onProgress={onProgress}
           style={{
             ...styles.video,
@@ -126,20 +139,22 @@ const VideoTrimScreen: FunctionComponent<IVideoTrimScreen> = ({
         maxValue={duration}
         startValue={trimStart}
         endValue={trimEnd}
-        thumbnails={thumbnails}
+        //thumbnails={thumbnails}
         onValuesChange={(start, end) => {
           setTrimStart(start);
           setTrimEnd(end);
           setPaused(true);
+          // @ts-ignore
           videoRef.current.seek(start);
         }}
       />
 
       <View style={styles.sendButtonContainer}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleCompression}>
           <Text style={styles.sendButtonText}>SEND</Text>
         </TouchableOpacity>
       </View>
+      <Text>{'compressionProgress: ' + compressionProgress}</Text>
     </ScrollView>
   );
 };
