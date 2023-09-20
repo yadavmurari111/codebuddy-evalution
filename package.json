@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "clean": "cd android && ./gradlew clean && cd..",
+    "clean": "cd android && ./gradlew clean && ./gradlew cleanBuildCache && cd..",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
@@ -20,13 +20,14 @@
     "@use-it/interval": "^1.0.0",
     "react": "18.1.0",
     "react-native": "0.70.10",
-    "react-native-create-thumbnail": "^1.6.4",
+    "react-native-compressor": "^1.8.3",
     "react-native-image-picker": "^7.0.0",
     "react-native-screens": "^3.25.0",
     "react-native-sound": "^0.11.2",
     "react-native-svg": "^13.13.0",
     "react-native-vector-icons": "^10.0.0",
-    "react-native-video": "^5.2.1"
+    "react-native-video": "^5.2.1",
+    "react-native-video-trim": "^1.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
