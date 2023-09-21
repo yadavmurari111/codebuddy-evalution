@@ -4,6 +4,7 @@ import LoginScreen from '../LoginScreen';
 import ChatScreen from '../ChatScreen';
 import ROUTE_NAME from './navigation-constants';
 import VideoTrimScreen from '../VideoTrimScreen';
+import SettingsScreen from '../SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,8 +42,8 @@ export const LoggedInScreenStack = () => {
     <Stack.Navigator screenOptions={{headerShadowVisible: true}}>
       <Stack.Screen name={ROUTE_NAME.CHAT_SCREEN} component={ChatScreen} />
       <Stack.Screen
-        name={ROUTE_NAME.VIDEO_TRIM_SCREEN}
-        component={VideoTrimScreen}
+        name={ROUTE_NAME.SETTINGS_SCREEN}
+        component={SettingsScreen}
       />
     </Stack.Navigator>
   );

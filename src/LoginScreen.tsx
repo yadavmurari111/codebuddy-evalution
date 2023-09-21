@@ -19,6 +19,21 @@ const LoginScreen = ({}: any) => {
     return auth().signInWithCredential(googleCredential); // Sign-in the user with the credential
   }
 
+  const anonymousLogin = async () => {
+    try {
+      const userCredential = await auth().signInAnonymously();
+      const user = userCredential.user;
+
+      if (user) {
+        console.log('Anonymous user logged in:', user.uid);
+      } else {
+        console.log('Anonymous login failed');
+      }
+    } catch (error) {
+      console.error('Error during anonymous login:', error);
+    }
+  };
+
   const signIn = () => {
     onGoogleButtonPress()
       .then(async (result: any) => {
@@ -39,6 +54,11 @@ const LoginScreen = ({}: any) => {
       <Text style={styles.subtitle}>Sign in to get started</Text>
       <TouchableOpacity onPress={signIn} style={styles.signInButton}>
         <Text style={styles.signInButtonText}>Sign in with Google</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={anonymousLogin}
+        style={styles.anonymousSignInButton}>
+        <Text style={styles.signInButtonText}>Anonymous Login</Text>
       </TouchableOpacity>
     </View>
   );
@@ -70,6 +90,14 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     backgroundColor: presetBase.colors.redOnLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 10,
+  },
+  anonymousSignInButton: {
+    marginTop: 10,
+    backgroundColor: presetBase.colors.grey80,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,

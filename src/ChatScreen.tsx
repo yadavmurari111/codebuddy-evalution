@@ -1,10 +1,26 @@
 import React from 'react';
-import {View} from 'react-native';
+import {TouchableOpacity, View} from 'react-native';
 import SendVideoComponent from './components/send-video/send-video.component';
+import AntDesignIcons from 'react-native-vector-icons/Feather';
+import ROUTE_NAME from './navigation/navigation-constants';
 
 const ChatScreen = ({navigation}: any) => {
+  const navigateToSettings = () => {
+    navigation.navigate(ROUTE_NAME.SETTINGS_SCREEN);
+  };
   return (
     <View style={{flex: 1}}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flex: 1,
+          padding: 12,
+          justifyContent: 'flex-end',
+        }}>
+        <TouchableOpacity onPress={navigateToSettings}>
+          <AntDesignIcons name={'settings'} size={40} color={'grey'} />
+        </TouchableOpacity>
+      </View>
       <View style={{flex: 1}}>
         {/*<ScrollView style={{flex: 9, padding: 10, backgroundColor: 'white'}}>*/}
         {/*  <AudioMsgComponent*/}
