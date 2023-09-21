@@ -1,9 +1,9 @@
 import React, {useEffect} from 'react';
 import {presetBase} from './utils/color';
 import {webClientId} from './utils/utils';
-import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
+import auth from '@react-native-firebase/auth';
 import AntDesignIcons from 'react-native-vector-icons/AntDesign';
 import {
   Image,
@@ -57,26 +57,23 @@ const LoginScreen = ({}: any) => {
   };
 
   async function onAppleButtonPress() {
-    // Start the sign-in request
+    // performs login request
     const appleAuthRequestResponse = await appleAuth.performRequest({
       requestedOperation: appleAuth.Operation.LOGIN,
-      requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      // Note: it appears putting FULL_NAME first is important, see issue #293
+      requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
     });
 
-    // Ensure Apple returned a user identityToken
-    if (!appleAuthRequestResponse.identityToken) {
-      throw new Error('Apple Sign-In failed - no identify token returned');
-    }
-
-    // Create a Firebase credential from the response
-    const {identityToken, nonce} = appleAuthRequestResponse;
-    const appleCredential = await auth.AppleAuthProvider.credential(
-      identityToken,
-      nonce,
+    // get current authentication state for user
+    // This method must be tested on a real device. On the iOS simulator it always throws an error.
+    const credentialState = await appleAuth.getCredentialStateForUser(
+      appleAuthRequestResponse.user,
     );
 
-    // Sign the user in with the credential
-    return auth().signInWithCredential(appleCredential);
+    // use credentialState response to ensure the user is authenticated
+    if (credentialState === appleAuth.State.AUTHORIZED) {
+      // user is authenticated
+    }
   }
 
   return (
