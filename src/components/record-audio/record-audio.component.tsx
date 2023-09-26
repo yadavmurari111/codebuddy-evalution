@@ -1,4 +1,4 @@
-import React, {FunctionComponent, useEffect, useRef, useState} from 'react';
+import React, {FunctionComponent, useRef, useState} from 'react';
 import {
   Animated,
   StyleSheet,
@@ -13,7 +13,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import {presetBase} from '../../utils/color';
 import {formatTime} from '../../utils/utils';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import RNSoundLevel from 'react-native-sound-level';
+import RNSoundLevel, {SoundLevelResult} from 'react-native-sound-level';
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
@@ -22,71 +22,87 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
   const [animationWidth, setAnimationWidth] = useState(0);
   const [showRecording, setShowRecording] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [audioLevelsArray, setAudioLevelsArray] = useState<number[]>([]);
-  const animationValue = useRef(new Animated.Value(0)).current; // Initialize an Animated.Value to track the width of the Animated.View
+  const [audioLevelsArray, setAudioLevelsArray] = useState<
+    {value: number; color: string}[]
+  >([]);
+
+  const newArray = audioLevelsArray.map(item => {
+    return {
+      value: item.value,
+      color: duration > 25 ? 'red' : 'white',
+    };
+  });
+
+  const onNewFrameHandler = (data: SoundLevelResult) => {
+    // see "Returned data" section below
+    console.log('Sound level info', data);
+    console.log('duration', duration);
+    const audioData = {
+      value: data.value + 160, // -160db is silence level
+      color: duration >= 5 ? presetBase.colors.redBase : 'white',
+    };
+    if (audioLevelsArray.length > 35) {
+      audioLevelsArray.shift();
+      audioLevelsArray.push(audioData);
+    } else {
+      audioLevelsArray.push(audioData);
+    }
+  };
+  console.log('length', audioLevelsArray.length);
 
   const onStartRecord = async () => {
     setShowRecording(true);
-    startAnimation();
-    RNSoundLevel.start({monitoringInterval: 500, samplingRate: 16000}); // start monitoring
-    RNSoundLevel.onNewFrame = data => {
-      // see "Returned data" section below
-      console.log('Sound level info', data);
-      audioLevelsArray.push(data.value + 160);
-    };
 
+    // start monitoring
+    RNSoundLevel.start({monitoringInterval: 10});
+    // sound levels/intensity
+    RNSoundLevel.onNewFrame = data => onNewFrameHandler(data);
+    // start recording
     const result = await audioRecorderPlayer.startRecorder();
+
     audioRecorderPlayer.addRecordBackListener(e => {
       console.log(e, 'e');
-      setDuration(e.currentPosition / 1000);
+      const recordDuration = e.currentPosition / 1000; // in sec
+      if (recordDuration <= 30) {
+        setDuration(recordDuration);
+      } else {
+        onStopRecord();
+      }
     });
 
     console.log(result, 'result');
   };
 
-  const onStopRecord = async () => {
+  const onCancelRecording = async () => {
     setShowRecording(false);
-    RNSoundLevel.stop();
-    setDuration(0);
-    animationValue.setValue(0);
     setAudioLevelsArray([]);
+    setDuration(0);
 
-    await audioRecorderPlayer.stopRecorder();
+    await onStopRecord();
   };
 
-  console.log(audioLevelsArray, '==');
-
-  const startAnimation = () => {
-    // Animate the width from 0 to 100% over soundDuration (in seconds)
-    Animated.timing(animationValue, {
-      toValue: 100000, // Final width is 100%
-      duration: 30 * 1000, // Animation duration in milliseconds (30 seconds)
-      useNativeDriver: false, // Set to true if you want to use the native driver
-    }).start(result => {
-      if (result.finished) {
-        //animationValue.setValue(0);
-      }
-    });
+  const onStopRecord = async () => {
+    await RNSoundLevel.stop(); // stop audio intensity/level observation
   };
 
+  // console.log(audioLevelsArray, '==');
   const translateX = useRef(new Animated.Value(0)).current;
 
   const animationConfig = {
-    toValue: waveBoxWidth,
-    duration: 1000, // Adjust the duration as needed
-    useNativeDriver: false, // Necessary for 'translateX' animation
+    toValue: -5000,
+    duration: (30 - duration) * 1000, // Adjust the duration as needed
+    useNativeDriver: true, // Necessary for 'translateX' animation
   };
 
   // Define the animation
   const translateAnimation = Animated.timing(translateX, animationConfig);
+  console.log(waveBoxWidth, 'waveBoxWidth');
+  console.log(animationWidth, 'animationWidth');
 
-  // Start the animation when the component mounts
-  useEffect(() => {
-    translateAnimation.start();
-  }, []);
+  console.log(audioLevelsArray);
 
   return (
-    <View style={{flex: 1, backgroundColor: 'lightgrey'}}>
+    <View style={{flex: 1, backgroundColor: 'lightgrey', margin: 5}}>
       {!showRecording && (
         <View
           style={{
@@ -147,7 +163,7 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
             backgroundColor: 'white',
           }}>
           <View style={{justifyContent: 'center'}}>
-            <TouchableOpacity onPress={() => onStopRecord()}>
+            <TouchableOpacity onPress={() => onCancelRecording()}>
               <AntDesignIcons name={'delete'} color={'blue'} size={30} />
             </TouchableOpacity>
           </View>
@@ -170,20 +186,18 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
                 paddingHorizontal: 7,
               }}>
               <View style={{backgroundColor: 'white', borderRadius: 100}}>
-                <TouchableOpacity onPress={() => {}}>
+                <TouchableOpacity onPress={() => onStopRecord()}>
                   <AntDesignIcons name={'pause'} color={'blue'} size={20} />
                 </TouchableOpacity>
               </View>
               <View
                 onLayout={event =>
-                  setWaveBoxWidth(event.nativeEvent.layout.width)
+                  setWaveBoxWidth(event.nativeEvent.layout.width / 6)
                 }
                 style={{
                   width: '70%',
                   overflow: 'hidden',
                   height: 20,
-                  alignItems: 'center',
-                  //backgroundColor: 'grey',
                 }}>
                 <Animated.View
                   onLayout={event =>
@@ -192,27 +206,27 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
                   style={{
                     flexDirection: 'row',
                     height: 20,
+                    //borderWidth: 2,
+
                     alignItems: 'center',
-                    transform: [{translateX}],
+                    // transform: [{translateX}],
                   }}>
-                  {audioLevelsArray.map((data, index) => (
+                  {newArray.map((data, index) => (
                     <View
                       key={index}
                       style={{
                         width: 3,
                         borderRadius: 50,
-                        marginRight: 1,
-                        backgroundColor: 'white',
-                        height: data < 120 ? 5 : data / 8,
+                        marginRight: 3,
+                        backgroundColor: data.color,
+                        height: data.value < 110 ? 5 : data.value / 10,
                       }}
                     />
                   ))}
                 </Animated.View>
               </View>
               <View>
-                <Text style={{color: 'white', fontWeight: '700'}}>
-                  {formatTime(duration)}
-                </Text>
+                <Text style={{color: 'white'}}>{formatTime(duration)}</Text>
               </View>
             </View>
           </View>
@@ -253,14 +267,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'red',
   },
 });
-const onPausePlay = async () => {
-  await audioRecorderPlayer.pausePlayer();
-};
 
 const onStopPlay = async () => {
   console.log('onStopPlay');
   await audioRecorderPlayer.stopPlayer();
   audioRecorderPlayer.removePlayBackListener();
+};
+const onPausePlay = async () => {
+  await audioRecorderPlayer.pausePlayer();
 };
 
 const onStartPlay = async () => {
