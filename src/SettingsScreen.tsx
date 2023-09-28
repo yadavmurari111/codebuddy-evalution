@@ -64,10 +64,27 @@ const SettingsScreen: FunctionComponent<
       showErrorAlert(error);
     }
   };
+
+  async function signOutAndClearSessions() {
+    try {
+      await GoogleSignin.revokeAccess();
+      await GoogleSignin.signOut();
+      await auth().signOut();
+
+      // After clearing the sessions, the account selection modal appear when re-logging in.
+    } catch (error) {
+      console.error('Error signing out and clearing sessions:', error);
+    }
+  }
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={connectGoogle} style={styles.signInButton}>
         <Text style={styles.signInButtonText}>Connect with Google</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={signOutAndClearSessions}
+        style={styles.signInButton}>
+        <Text style={styles.signInButtonText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -83,6 +100,7 @@ const styles = StyleSheet.create({
     paddingBottom: 200,
   },
   signInButton: {
+    marginTop: 10,
     backgroundColor: presetBase.colors.redOnLight,
     alignItems: 'center',
     justifyContent: 'center',
