@@ -1,8 +1,8 @@
 import React from 'react';
 import {TouchableOpacity, View} from 'react-native';
-import SendVideoComponent from './components/send-video/send-video.component';
 import AntDesignIcons from 'react-native-vector-icons/Feather';
 import ROUTE_NAME from './navigation/navigation-constants';
+import RecordAudioComponent from './components/record-audio/record-audio.component';
 
 const ChatScreen = ({navigation}: any) => {
   const navigateToSettings = () => {
@@ -14,14 +14,13 @@ const ChatScreen = ({navigation}: any) => {
         style={{
           flexDirection: 'row',
           flex: 1,
-          padding: 12,
           justifyContent: 'flex-end',
         }}>
         <TouchableOpacity onPress={navigateToSettings}>
           <AntDesignIcons name={'settings'} size={40} color={'grey'} />
         </TouchableOpacity>
       </View>
-      <View style={{flex: 1}}>
+      <View style={{flex: 1, padding: 12}}>
         {/*<ScrollView style={{flex: 9, padding: 10, backgroundColor: 'white'}}>*/}
         {/*  <AudioMsgComponent*/}
         {/*    navigation={navigation}*/}
@@ -55,13 +54,12 @@ const ChatScreen = ({navigation}: any) => {
       </View>
       <View
         style={{
-          //flex: 1,
           height: 80,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-        <SendVideoComponent navigation={navigation} />
+        <RecordAudioComponent navigation={navigation} />
       </View>
     </View>
   );
