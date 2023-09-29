@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "clean": "cd android && ./gradlew clean && ./gradlew cleanBuildCache && cd..",
+    "clean": "cd android && ./gradlew clean && cd..",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
@@ -18,12 +18,15 @@
     "@react-native-masked-view/masked-view": "^0.2.9",
     "@react-navigation/native": "^6.1.7",
     "@react-navigation/native-stack": "^6.9.13",
+    "@shopify/react-native-skia": "^0.1.211",
     "@use-it/interval": "^1.0.0",
     "lottie-react-native": "^6.3.1",
     "react": "18.1.0",
     "react-native": "0.70.10",
     "react-native-audio-recorder-player": "^3.6.0",
     "react-native-compressor": "^1.8.3",
+    "react-native-fs": "^2.20.0",
+    "react-native-html-to-pdf": "^0.12.0",
     "react-native-image-picker": "^7.0.0",
     "react-native-screens": "^3.25.0",
     "react-native-sound": "^0.11.2",
@@ -31,7 +34,8 @@
     "react-native-svg": "^13.13.0",
     "react-native-vector-icons": "^10.0.0",
     "react-native-video": "^5.2.1",
-    "react-native-video-trim": "^1.0.4"
+    "react-native-video-trim": "^1.0.4",
+    "rn-fetch-blob": "^0.12.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
@@ -41,6 +45,7 @@
     "@types/jest": "^26.0.23",
     "@types/react": "^18.0.21",
     "@types/react-native": "^0.70.6",
+    "@types/react-native-html-to-pdf": "^0.8.1",
     "@types/react-native-vector-icons": "^6.4.13",
     "@types/react-native-video": "^5.0.15",
     "@types/react-test-renderer": "^18.0.0",
