@@ -5,6 +5,8 @@ import ChatScreen from '../ChatScreen';
 import ROUTE_NAME from './navigation-constants';
 import VideoTrimScreen from '../VideoTrimScreen';
 import SettingsScreen from '../SettingsScreen';
+import ChatToPDF from '../ChatToPdfScreen';
+import ChatExportToPDF from '../ChatToPdfScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,7 +45,7 @@ export const LoggedInScreenStack = () => {
       <Stack.Screen name={ROUTE_NAME.CHAT_SCREEN} component={ChatScreen} />
       <Stack.Screen
         name={ROUTE_NAME.SETTINGS_SCREEN}
-        component={SettingsScreen}
+        component={ChatExportToPDF}
       />
     </Stack.Navigator>
   );

@@ -5,20 +5,26 @@ import RNFS from 'react-native-fs';
 import {chatData} from './utils/utils';
 
 const ChatExportToPDF = () => {
+  const showChatBubble = true;
+  const showImage = true;
+  const showAudio = true;
   const [pdfFilePath, setPdfFilePath] = useState('');
+  const [pdfFileHTML, setPdfFileHTML] = useState('');
   const pageBreak = '<div style="page-break-before: always;"></div>';
+
+  const imageHTML =
+    '<div style="text-align: center; margin-top: 30%"><img src="https://i.ibb.co/5Fm2JLz/icon-rounded-1024.png" alt="icon-rounded-256" height="256" width="256" /></div>';
 
   const generatePDF = async () => {
     try {
       const chatHTML = generateChatHTML(); // Convert chat data to HTML
 
-      // Generate PDF from HTML
       const pdfOptions = {
         html: chatHTML,
         fileName: 'chat_export.pdf',
         directory: 'Downloads',
       };
-      const pdf = await RNHTMLtoPDF.convert(pdfOptions);
+      const pdf = await RNHTMLtoPDF.convert(pdfOptions); // Generate PDF from HTML
       setPdfFilePath(pdf.filePath || '');
 
       // Optionally, you can open or share the PDF here
@@ -51,89 +57,140 @@ const ChatExportToPDF = () => {
 
     console.log(`Time difference in hours: ${roundedTimeDifferenceHours}`);
     console.log(`Time difference in days: ${roundedTimeDifferenceDays}`);
-    const textMsg =
-      timeDifferenceHours < 24
-        ? roundedTimeDifferenceHours + ' hrs ago'
-        : roundedTimeDifferenceDays + ' days ago';
 
-    return {timeDifferenceHours, textMsg};
+    // Format the time difference in date-time format
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    } as Intl.DateTimeFormatOptions;
+    const formattedTimestamp1 = timestamp1.toLocaleDateString('en-US', options);
+    const formattedTimestamp2 = timestamp2.toLocaleDateString('en-US', options);
+
+    const formattedTimeDifference = `${formattedTimestamp2}`;
+
+    const textMsg = timeDifferenceHours < 24 ? '' : formattedTimeDifference;
+
+    return {timeDifferenceHours, formattedTimeDifference, textMsg};
+  };
+
+  const formatTimestampToHourMinuteAMPM = (
+    timestamp: string | number | Date,
+  ) => {
+    const date = new Date(timestamp);
+
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    // Convert hours from 24-hour format to 12-hour format
+    const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+
+    // Ensure minutes are displayed with a leading zero if less than 10
+    const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+
+    // Construct the formatted time string
+    return `${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
   const generateChatHTML = () => {
-    const chatMessagesHTML = chatData
-      .map((message, index) => {
-        const senderClass = message.self ? 'self' : 'other';
-        let messageContentHTML = `<strong>${message.sender}:</strong><p>${message.text}</p>`;
+    const mergedChatData: {senderClass: string; html: string}[] = []; // Array to store merged chat messages
+    let currentMessage: {senderClass: any; html: any} | null = null; // The currently merged message
 
-        // Check if there's an image
-        if (message.image !== null) {
-          messageContentHTML += `
-        <img src="${message.image}" alt="Image" width="100" height="100" />`;
-        }
+    chatData.forEach(message => {
+      const timeFormatted = formatTimestampToHourMinuteAMPM(message.timestamp);
+      const senderClass = message.self ? 'self' : 'other'; // Define senderClass within the loop
+      const messageContentHTML = `
+      <p>${message.text}</p>
+      ${
+        message.image && showImage
+          ? `<img src="${message.image}" alt="Image" width="100" height="100" />`
+          : ''
+      }
+      ${message.audio && showAudio ? '<p>**AUDIO**</p>' : ''}`;
 
-        // Check if there's an audio
-        if (message.audio !== null) {
-          messageContentHTML += '<p>**AUDIO**</p>';
-        }
+      if (currentMessage && currentMessage.senderClass === senderClass) {
+        // Merge with the previous message if it's from the same sender
+        currentMessage.html += messageContentHTML;
+      } else {
+        // Start a new merged message
+        currentMessage = {
+          senderClass,
+          html: `<p style="font-size: 10px; color: dimgray"><strong style="font-size: 15px; color: black">${message.sender} · </strong>${timeFormatted}</p>
+                 ${messageContentHTML}`,
+        };
+        mergedChatData.push(currentMessage);
+      }
+    });
 
-        // Example usage:
+    const chatMessagesHTML = mergedChatData
+      .map((mergedMessage, index) => {
+        const {senderClass, html} = mergedMessage;
+
         const {textMsg, timeDifferenceHours} = calculateTimeDifference(
           index,
           chatData,
         );
 
-        const isTimeDifferenceGreaterThan2 = timeDifferenceHours > 2;
-
-        const messageWhenTimeDifferenceGreaterThan2 = `<div style="margin-bottom: 10px; text-align: center;">
+        const messageWhenTimeDifferenceGreaterThan24Hrs = `<div style="margin-bottom: 10px; text-align: center;">
                  <p><strong>${textMsg}</strong></p></div>`;
 
-        return `<div>
-                   <div class="${senderClass}">${messageContentHTML}</div>
-                     ${
-                       isTimeDifferenceGreaterThan2
-                         ? messageWhenTimeDifferenceGreaterThan2
-                         : ''
-                     }
-                </div>`;
+        const alignSelf = senderClass === 'self' ? 'flex-end' : 'flex-end'; // Determine alignSelf
+        return `<div class="chat-bubble-container" style="align-self: ${alignSelf};">
+                    <div class="chat-bubble ${senderClass}">${html}</div>
+                </div>
+               ${
+                 timeDifferenceHours > 24
+                   ? messageWhenTimeDifferenceGreaterThan24Hrs
+                   : ''
+               }`;
       })
       .join('');
 
-    const imageHTML =
-      '<div style="text-align: center;"><img src="https://i.ibb.co/5Fm2JLz/icon-rounded-1024.png" alt="icon-rounded-1024" height="512" width="512" /></div>';
-
     // Add the title with center alignment
     const titleHTML = `<div style="text-align: center;">
-      <h1>Alice & Bob</h1>
-      <h1>Friends since 29-01-2023</h1>
-    </div>`;
+    <h1>Alice & Bob</h1>
+    <h1>Friends since 29-01-2023</h1>
+  </div>`;
 
     // Combine the title and chat messages
-    return `<html lang="">
-      <head>
-        <style>
-          .self {
-            background-color: #DCF8C6;
-            text-align: right;
-            padding: 20px; 
-            border-radius: 20px;
-            margin-bottom: 10px; 
-          }
-          .other {
-            background-color: #EFEFEF;
-            padding: 20px; 
-            border-radius: 20px;
-            margin-bottom: 10px;
-          }
-        </style><title></title>
-      </head>
-      <body>
-        ${imageHTML}
-        ${titleHTML}
-        ${pageBreak}
-        ${chatMessagesHTML}
-      </body>
-    </html>
-  `;
+    const htmlData = `<html lang="">
+    <head>
+      <style>
+        .chat-bubble-container {
+          display: flex;
+          margin-bottom: 10px;
+          
+        }
+        .chat-bubble {
+          max-width: 80%;
+          padding: 10px;
+          border-radius: 20px;
+          align-self: flex-end;
+        }
+        .self {
+          background-color: ${showChatBubble ? '#0096FF' : '#ffff'};
+          text-align: left;
+        }
+        .other {
+          background-color: ${showChatBubble ? '#ADD8E6' : '#ffff'};
+          text-align: left;
+        }
+      </style>
+      <title></title>
+    </head>
+    <body>
+      ${imageHTML}
+      ${titleHTML}
+      ${pageBreak}
+      ${chatMessagesHTML}
+    </body>
+  </html>
+`;
+    setPdfFileHTML(htmlData);
+    return htmlData;
   };
 
   const downloadPDF = async () => {
@@ -159,3 +216,11 @@ const ChatExportToPDF = () => {
 };
 
 export default ChatExportToPDF;
+
+// justify-content: ${
+//   senderClass === 'self' ? 'flex-end' : 'flex-start'
+// };
+
+//<ScrollView style={{width: 360}}>
+//         <RenderHtml contentWidth={360} source={{html: pdfFileHTML}} />
+//       </ScrollView>
