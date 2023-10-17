@@ -1276,13 +1276,6 @@ const WaveAnimation: FunctionComponent<IWaveAnimation> = ({
       autoPlay={play || false}
       loop={true}
     />
-    {/*<LottieView*/}
-    {/*  speed={2.5}*/}
-    {/*  style={{width: 42, height: 30}}*/}
-    {/*  source={IconJson}*/}
-    {/*  autoPlay={play || false}*/}
-    {/*  loop={true}*/}
-    {/*/>*/}
   </View>
 );
 export default WaveAnimation;

@@ -7,6 +7,7 @@ import VideoTrimScreen from '../VideoTrimScreen';
 import SettingsScreen from '../SettingsScreen';
 import ChatToPDF from '../ChatToPdfScreen';
 import ChatExportToPDF from '../ChatToPdfScreen';
+import SendVideoComponent from '../components/send-video/send-video.component';
 
 const Stack = createNativeStackNavigator();
 
@@ -46,6 +47,10 @@ export const LoggedInScreenStack = () => {
       <Stack.Screen
         name={ROUTE_NAME.SETTINGS_SCREEN}
         component={ChatExportToPDF}
+      />
+      <Stack.Screen
+        name={ROUTE_NAME.VIDEO_TRIM_SCREEN}
+        component={SendVideoComponent}
       />
     </Stack.Navigator>
   );

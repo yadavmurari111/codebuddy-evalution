@@ -1,21 +1,55 @@
 import React, {FunctionComponent, useEffect, useState} from 'react';
-import {StyleSheet, TextInput, TouchableOpacity, View} from 'react-native';
-import AntDesignIcons from 'react-native-vector-icons/MaterialIcons';
+import {
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import AntDesignIcons from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import {presetBase} from '../../utils/color';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import RNSoundLevel, {SoundLevelResult} from 'react-native-sound-level';
+import AudioRecorderPlayer, {
+  AudioEncoderAndroidType,
+  AudioSet,
+  AudioSourceAndroidType,
+  AVEncoderAudioQualityIOSType,
+  AVEncodingOption,
+  AVModeIOSOption,
+} from 'react-native-audio-recorder-player';
+// import RNSoundLevel, {SoundLevelResult} from 'react-native-sound-level';
 import WaveAnimation from '../../assets/wave-animation';
 import DotAnimation from '../../assets/dot-animation';
 import RedPulsingTimer from './red-pulsating-indicator.component';
+import RNFetchBlob from 'rn-fetch-blob';
 
+const meteringEnabled = true;
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
+const dirs = RNFetchBlob.fs.dirs;
+const path = Platform.select({
+  ios: `${dirs.CacheDir}/hello.m4a`,
+  android: `${dirs.CacheDir}/hello.mp3`,
+});
+
+const audioSet: AudioSet = {
+  AudioEncoderAndroid: AudioEncoderAndroidType.AAC,
+  AudioSourceAndroid: AudioSourceAndroidType.MIC,
+  AVModeIOS: AVModeIOSOption.measurement,
+  AVEncoderAudioQualityKeyIOS: AVEncoderAudioQualityIOSType.high,
+  AVNumberOfChannelsKeyIOS: 2,
+  AVFormatIDKeyIOS: AVEncodingOption.aac,
+};
+
 const RecordAudioComponent: FunctionComponent<any> = () => {
-  const audibleSound = 120;
+  const audibleSound = 145;
   const [duration, setDuration] = useState(0);
+  const [isPaused, setIsPaused] = useState(true);
   const [showRecording, setShowRecording] = useState(false);
-  const [audioLevelsArray, setAudioLevelsArray] = useState([0]);
+  const [audioLevelsArray, setAudioLevelsArray] = useState([
+    {id: 1, height: 5},
+  ]);
 
   useEffect(() => {
     if (duration >= 30) {
@@ -23,39 +57,95 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
     }
   }, [duration]);
 
-  const onNewFrameHandler = (data: SoundLevelResult) => {
-    audioLevelsArray.shift();
-    audioLevelsArray.push(data.value + 160);
-  };
-
   const onStartRecord = async () => {
+    setIsPaused(false);
     setShowRecording(true); // toggle the recording view
-    RNSoundLevel.start(); // start monitoring
-    RNSoundLevel.onNewFrame = data => onNewFrameHandler(data); // sound levels/intensity
-    const result = await audioRecorderPlayer.startRecorder(); // start recording and return result
+    const result = await audioRecorderPlayer.startRecorder(
+      path,
+      audioSet,
+      meteringEnabled,
+    ); // start recording and return result
 
-    audioRecorderPlayer.addRecordBackListener(e =>
-      setDuration(Math.floor(e.currentPosition / 1000)),
-    );
+    audioRecorderPlayer.addPlayBackListener(e => {
+      console.log(e, 'addPlayBackListener==============');
+    });
+
+    audioRecorderPlayer.addRecordBackListener(e => {
+      //console.log(e, 'response');
+      setDuration(Math.floor(e.currentPosition / 1000));
+      //audioLevelsArray.shift();
+      audioLevelsArray.push({
+        id: e.currentPosition,
+        height: e.currentMetering ? e.currentMetering + 20 : 0,
+      });
+    });
 
     console.log(result, 'result');
   };
+  console.log(audioLevelsArray[0], 'audioLevelsArray');
 
   const onCancelRecording = async () => {
     setShowRecording(false);
-    setAudioLevelsArray([0]);
+    setAudioLevelsArray([{id: 1, height: 5}]);
     setDuration(0);
 
     await onStopRecord();
   };
 
-  const onStopRecord = async () => {
-    setAudioLevelsArray([0]);
-    await audioRecorderPlayer.stopRecorder().then(() => RNSoundLevel.stop()); // stopRecorder and audio intensity/level observation
+  const pauseRecording = async () => {
+    try {
+      setIsPaused(!isPaused);
+      setAudioLevelsArray([{id: 1, height: 5}]);
+      await audioRecorderPlayer.pauseRecorder();
+      // await RNSoundLevel.stop();
+    } catch (error) {
+      console.error('Error pausing recording:', error);
+    }
   };
+
+  const resumeRecording = async () => {
+    try {
+      setIsPaused(!isPaused);
+      await audioRecorderPlayer.resumeRecorder();
+      // await RNSoundLevel.start();
+      // RNSoundLevel.onNewFrame = data => onNewFrameHandler(data);
+    } catch (error) {
+      console.error('Error resuming recording:', error);
+    }
+  };
+
+  const onStopRecord = async () => {
+    setAudioLevelsArray([{id: 1, height: 5}]);
+    await audioRecorderPlayer.stopRecorder().then(); // stopRecorder and audio intensity/level observation
+  };
+
+  const barData = [
+    {id: 1, height: 50},
+    {id: 2, height: 80},
+    {id: 3, height: 30},
+    {id: 4, height: 50},
+    {id: 5, height: 80},
+    {id: 6, height: 30},
+    {id: 7, height: 50},
+    {id: 8, height: 80},
+    {id: 9, height: 30},
+    // Add more data as needed
+  ];
+
+  const data = Array.from(
+    {length: 15 - audioLevelsArray.length},
+    (_, index) => ({id: index, height: 5}),
+  );
 
   return (
     <View style={{flex: 1, backgroundColor: 'lightgrey', margin: 5}}>
+      {/*<AnimatedBarChart*/}
+      {/*  data={*/}
+      {/*    audioLevelsArray.length > 15*/}
+      {/*      ? audioLevelsArray.slice(-15)*/}
+      {/*      : audioLevelsArray.concat(data)*/}
+      {/*  }*/}
+      {/*/>*/}
       {!showRecording && (
         <View
           style={{
@@ -105,7 +195,7 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
           </View>
           <View style={styles.sendButtonContainer}>
             <TouchableOpacity>
-              <AntDesignIcons
+              <MaterialCommunityIcons
                 name={'send'}
                 color={presetBase.colors.blueBase}
                 size={30}
@@ -125,7 +215,7 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
           }}>
           <View style={{justifyContent: 'center'}}>
             <TouchableOpacity onPress={() => onCancelRecording()}>
-              <AntDesignIcons
+              <MaterialCommunityIcons
                 name={'delete'}
                 color={presetBase.colors.blueBase}
                 size={30}
@@ -156,9 +246,11 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
                     backgroundColor: 'white',
                     borderRadius: 100,
                   }}
-                  onPress={() => onStopRecord()}>
+                  onPress={() =>
+                    isPaused ? resumeRecording() : pauseRecording()
+                  }>
                   <AntDesignIcons
-                    name={'pause'}
+                    name={isPaused ? 'play' : 'pause'}
                     color={presetBase.colors.blueBase}
                     size={20}
                   />
@@ -171,10 +263,8 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
                   height: 20,
                   justifyContent: 'center',
                 }}>
-                {audioLevelsArray[0] < audibleSound && (
-                  <DotAnimation play={false} />
-                )}
-                {audioLevelsArray[0] > audibleSound && (
+                {audioLevelsArray[0].height < audibleSound && <DotAnimation />}
+                {audioLevelsArray[0].height > audibleSound && (
                   <WaveAnimation play={true} />
                 )}
               </View>
@@ -186,7 +276,7 @@ const RecordAudioComponent: FunctionComponent<any> = () => {
 
           <View style={styles.sendButtonContainer}>
             <TouchableOpacity>
-              <AntDesignIcons
+              <MaterialCommunityIcons
                 name={'send'}
                 color={presetBase.colors.blueBase}
                 size={30}
