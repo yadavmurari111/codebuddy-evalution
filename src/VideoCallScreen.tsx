@@ -14,18 +14,78 @@ import {
   View,
 } from 'react-native';
 import {PermissionsAndroid} from 'react-native';
-import axios from 'axios';
 import {presetBase} from './utils/color';
 import {encode} from 'base-64';
 
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import axios from 'axios';
+import AccessToken from 'twilio/lib/jwt/AccessToken';
+
+// const {AccessToken} = require('twilio').jwt;
+// const {VideoGrant} = AccessToken;
+//
+// // Your Twilio Account SID and Auth Token
+// const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
+// const authToken = '54162d8847be259a57f4c3dc8a807467';
+// const baseUrl = 'https://video.twilio.com/v1';
+//
+// // Generate an access token for a participant
+// function generateAccessToken(identity: string) {
+//   const token = new AccessToken(accountSid, identity, authToken);
+//
+//   // Add video grant to the token
+//   const videoGrant = new VideoGrant();
+//   token.addGrant(videoGrant);
+//
+//   return token.toJwt();
+// }
+//
+// // Use the generateAccessToken function to create tokens for participants
+// const participant1Token = generateAccessToken('participant1');
+// const participant2Token = generateAccessToken('participant2');
+
+const createToken = async (userName: string) => {
+  const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
+  const authToken = '54162d8847be259a57f4c3dc8a807467';
+  const baseUrl = 'https://video.twilio.com/v1';
+
+  try {
+    // Authenticate with Twilio
+    const authHeader = 'Basic ' + encode(`${accountSid}:${authToken}`);
+    const headers = {
+      Authorization: authHeader,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    // Create the room
+    const roomData = {
+      StatusCallback: 'https://example.org',
+      Type: 'peer-to-peer',
+      UniqueName: 'SalesMeeting',
+    };
+
+    const response = await axios.get(
+      `${baseUrl}/getToken?userName=${userName}`,
+    );
+
+    if (response.status === 201) {
+      console.log('Twilio Video room created. SID:', response.data.sid);
+      return response.data.sid;
+    } else {
+      console.error('Failed to create Twilio Video room:', response.status);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error creating Twilio Video room:', error);
+    return null;
+  }
+};
 
 const createTwilioVideoRoom = async () => {
   const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
   const authToken = '54162d8847be259a57f4c3dc8a807467';
   const baseUrl = 'https://video.twilio.com/v1';
-
   try {
     // Authenticate with Twilio
     const authHeader = 'Basic ' + encode(`${accountSid}:${authToken}`);
@@ -70,6 +130,7 @@ const VideoCallScreen: FunctionComponent<
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [status, setStatus] = useState('disconnected');
+  const [userName, setUserName] = useState('');
   const [participants, setParticipants] = useState(new Map());
   const [videoTracks, setVideoTracks] = useState(new Map());
   console.log(videoTracks, '===');
@@ -101,14 +162,14 @@ const VideoCallScreen: FunctionComponent<
     }
   }
 
-  createTwilioVideoRoom().then(roomSid => {
-    if (roomSid) {
-      // Handle success
-      console.log('success===');
-    } else {
-      // Handle failure
-    }
-  });
+  // createToken(userName).then(roomSid => {
+  //   if (roomSid) {
+  //     // Handle success
+  //     console.log('success===');
+  //   } else {
+  //     // Handle failure
+  //   }
+  // });
 
   // Call the function to request permissions when needed.
   useEffect(() => {
@@ -117,12 +178,55 @@ const VideoCallScreen: FunctionComponent<
 
   const _onConnectButtonPress = () => {
     twilioRef.current.connect({
-      roomName: 'roomName',
-      accessToken: token,
+      accessToken:
+        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc2OTg2ODMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcwMjI4MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50ICIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.hPEKKipDZi0ZZhZLDmBPlyb3C4Vs9cTRCSZlycFQFJg', // Use the token for participant 1
     });
 
     setStatus('connecting');
   };
+
+  const _onConnectButtonPress2 = () => {
+    twilioRef.current.connect({
+      accessToken:
+        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc2OTg4MjUiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcwMjQyNSwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50MiIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.rV6V6sEUFHOVWC-n1pEZQRvdxDU7i6PpZQp3RdkjQOM', // Use the token for participant 1
+    });
+
+    setStatus('connecting');
+  };
+
+  // Substitute your Twilio AccountSid and API Key details
+  const ACCOUNT_SID = 'ACaae70ff76447aa3604d8838c9ca6016a';
+  const API_KEY_SID = 'SKf53f8039a45a382f463f74ce51eead09';
+  const API_KEY_SECRET = 'W9HvAgiUxqzoph6IEqLmSKeOe2xKu1O6';
+
+  // Function to generate a Twilio access token for a specific room
+  // const generateTwilioAccessToken = (identity, roomName) => {
+  //   // Create an Access Token
+  //   const accessToken = new AccessToken(
+  //     ACCOUNT_SID,
+  //     API_KEY_SID,
+  //     API_KEY_SECRET,
+  //     {},
+  //   );
+  //
+  //   // Set the Identity of this token
+  //   accessToken.identity = identity;
+  //
+  //   // Grant access to Video
+  //   const grant = new VideoGrant();
+  //   grant.room = roomName;
+  //   accessToken.addGrant(grant);
+  //
+  //   // Serialize the token as a JWT
+  //   return accessToken.toJwt();
+  // };
+
+  // Example usage:
+  const identity = 'example-user'; // Replace with the user's identity
+  const roomName = 'cool room'; // Replace with the desired room name
+
+  //const tokenData = generateTwilioAccessToken(identity, roomName);
+  //console.log(tokenData, 'data');
 
   const _onEndButtonPress = () => {
     twilioRef.current.disconnect();
@@ -205,15 +309,26 @@ const VideoCallScreen: FunctionComponent<
         <View>
           <Text style={styles.welcome}>React Native Twilio Video</Text>
           <TextInput
-            style={styles.input}
+            style={{borderWidth: 1}}
             autoCapitalize="none"
             value={token}
             onChangeText={text => setToken(text)}
+          />
+          <TextInput
+            style={{borderWidth: 1}}
+            autoCapitalize="none"
+            value={token}
+            onChangeText={text => setUserName(text)}
           />
           <Button
             title="Connect"
             style={styles.button}
             onPress={_onConnectButtonPress}
+          />
+          <Button
+            title="Connect2"
+            style={styles.button}
+            onPress={_onConnectButtonPress2}
           />
         </View>
       )}
@@ -234,10 +349,12 @@ const VideoCallScreen: FunctionComponent<
                     );
                   })}
                 </View>
-                <TwilioVideoLocalView
-                  enabled={true}
-                  style={styles.localVideo}
-                />
+                <View style={{position: 'absolute', borderWidth: 2}}>
+                  <TwilioVideoLocalView
+                    enabled={true}
+                    style={styles.localVideo}
+                  />
+                </View>
               </View>
             )}
           </View>
@@ -301,8 +418,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   remoteVideo: {
-    height: '50%',
-    width: '50%',
+    height: '100%',
+    width: '100%',
     borderWidth: 1,
   },
   optionsContainer: {
@@ -336,6 +453,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 200,
     aspectRatio: 9 / 16,
-    position: 'absolute',
   },
 });

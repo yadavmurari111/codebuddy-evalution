@@ -3,12 +3,10 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import LoginScreen from '../LoginScreen';
 import ChatScreen from '../ChatScreen';
 import ROUTE_NAME from './navigation-constants';
-import VideoTrimScreen from '../VideoTrimScreen';
-import SettingsScreen from '../SettingsScreen';
-import ChatToPDF from '../ChatToPdfScreen';
 import ChatExportToPDF from '../ChatToPdfScreen';
 import SendVideoComponent from '../components/send-video/send-video.component';
 import FullscreenVideoPlayer from '../components/video-player/fullscreen-video-player.component';
+import VideoCallScreen from '../VideoCallScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -56,6 +54,11 @@ export const LoggedInScreenStack = () => {
       <Stack.Screen
         name={ROUTE_NAME.VIDEO_FULL_SCREEN}
         component={FullscreenVideoPlayer}
+        options={{headerShown: true, title: ''}}
+      />
+      <Stack.Screen
+        name={ROUTE_NAME.VIDEO_CALL_SCREEN}
+        component={VideoCallScreen}
         options={{headerShown: true, title: ''}}
       />
     </Stack.Navigator>

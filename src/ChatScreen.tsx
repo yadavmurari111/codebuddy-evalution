@@ -22,6 +22,10 @@ const ChatScreen = ({navigation}: any) => {
     navigation.navigate(ROUTE_NAME.VIDEO_TRIM_SCREEN);
   };
 
+  const navigateToVideoCall = () => {
+    navigation.navigate(ROUTE_NAME.VIDEO_CALL_SCREEN);
+  };
+
   const navigateToFullscreenVideo = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_FULL_SCREEN, {
       videoData: {uri: videoUrl},
@@ -53,7 +57,7 @@ const ChatScreen = ({navigation}: any) => {
             padding: 5,
             backgroundColor: presetBase.colors.grey20,
           }}
-          onPress={navigateToSendVideo}>
+          onPress={navigateToVideoCall}>
           <AntDesignIcons name={'video'} size={40} color={'purple'} />
         </TouchableOpacity>
       </View>

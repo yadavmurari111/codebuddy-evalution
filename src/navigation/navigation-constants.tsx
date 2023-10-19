@@ -7,5 +7,6 @@ const ROUTE_NAME = {
   VIDEO_TRIM_SCREEN: 'VideoTrim-Screen',
   VIDEO_FULL_SCREEN: 'VideoFull-Screen',
   SETTINGS_SCREEN: 'Settings-Screen',
+  VIDEO_CALL_SCREEN: 'Video-call-Screen',
 };
 export default ROUTE_NAME;
