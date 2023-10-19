@@ -57,7 +57,11 @@ export const compressVideo = async (videoUrl: string) => {
 
   const result = await Video.compress(
     videoUrl,
-    {progressDivider: 5},
+    {
+      progressDivider: 10,
+      bitrate: 15000,
+      compressionMethod: 'manual',
+    },
     progress => {
       console.log('Compression Progress: ', (progressDone = progress));
     },
@@ -65,6 +69,18 @@ export const compressVideo = async (videoUrl: string) => {
   console.log('Compression done:', result);
   return result;
 };
+
+// export const saveVideoToCameraRoll = async (videoUrl: string) => {
+//   try {
+//     // Save the video to the camera roll
+//     CameraRoll.save(videoUrl, {type: 'video'}).then(r => {
+//       console.log(r, '====');
+//     });
+//   } catch (error) {
+//     console.error('Error saving video to camera roll:', error);
+//     return null;
+//   }
+// };
 
 export const chatData = [
   {

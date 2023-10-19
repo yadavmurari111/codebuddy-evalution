@@ -23,11 +23,25 @@ import {presetBase} from '../../utils/color';
 import Video from 'react-native-video';
 import {showEditor} from 'react-native-video-trim';
 import {compressVideo} from '../../utils/utils';
+import {CameraRoll} from '@react-native-camera-roll/camera-roll';
+import {
+  clearCache,
+  createVideoThumbnail,
+  download,
+  getVideoMetaData,
+} from 'react-native-compressor';
 
-const SendVideoComponent: FunctionComponent<any> = () => {
+interface ISendVideoComponent {
+  onSendVideo(url: string): void;
+}
+
+const SendVideoComponent: FunctionComponent<ISendVideoComponent> = ({
+  onSendVideo,
+}) => {
   const videoRef = useRef(null);
 
   const [videoUri, setVideoUri] = useState('');
+  const [thumbnail, setThumbnail] = useState({});
   const [loading, setLoading] = useState(false);
   const [paused, setPaused] = useState(true);
   const aspectRatio = 1;
@@ -57,15 +71,12 @@ const SendVideoComponent: FunctionComponent<any> = () => {
         result?.assets !== undefined &&
         result?.assets[0].duration !== undefined
       ) {
-        console.log(result, 'result');
+        console.log(result, '---result---');
         if (result.assets[0].duration > 30) {
           showAlert(result.assets[0].uri || '');
         } else {
           setLoading(true);
-          compressVideo(result.assets[0].uri || '').then(compressVideoUrl => {
-            setVideoUri(compressVideoUrl);
-            setLoading(false);
-          });
+          onSaveVideo(result.assets[0].uri || '');
         }
       }
     },
@@ -80,6 +91,27 @@ const SendVideoComponent: FunctionComponent<any> = () => {
       onVideoSelectedFromDevice,
     );
     setLoading(false);
+  };
+
+  const onSaveVideo = (uri: string) => {
+    compressVideo(uri || '').then(async compressVideoUrl => {
+      setVideoUri(compressVideoUrl);
+      setLoading(false);
+
+      await createVideoThumbnail(compressVideoUrl).then(thumbnailData => {
+        setThumbnail(thumbnailData);
+        clearCache();
+        console.log(thumbnailData, '==thumbnailData==');
+      });
+
+      getVideoMetaData(compressVideoUrl).then(metadata => {
+        console.log(metadata, '===metadata===');
+      });
+
+      // const downloadFileUrl = await download(compressVideoUrl, progress => {
+      //   console.log('downloadProgress: ', progress);
+      // });
+    });
   };
 
   useEffect(() => {
@@ -101,10 +133,7 @@ const SendVideoComponent: FunctionComponent<any> = () => {
         }
         case 'onFinishTrimming': {
           console.log('onFinishTrimming', event);
-          compressVideo(event.outputPath).then(compressVideoUrl => {
-            setVideoUri(compressVideoUrl);
-            setLoading(false);
-          });
+          onSaveVideo(event.outputPath);
           break;
         }
         case 'onCancelTrimming': {
@@ -179,7 +208,7 @@ const SendVideoComponent: FunctionComponent<any> = () => {
       </View>
 
       <View style={styles.sendButtonContainer}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => onSendVideo(videoUri)}>
           <Text style={styles.sendButtonText}>SEND</Text>
         </TouchableOpacity>
       </View>
