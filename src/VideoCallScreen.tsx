@@ -20,7 +20,7 @@ import {encode} from 'base-64';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
-import AccessToken from 'twilio/lib/jwt/AccessToken';
+import AccessToken, {VideoGrant} from 'twilio/lib/jwt/AccessToken';
 
 // const {AccessToken} = require('twilio').jwt;
 // const {VideoGrant} = AccessToken;
@@ -198,6 +198,31 @@ const VideoCallScreen: FunctionComponent<
   const ACCOUNT_SID = 'ACaae70ff76447aa3604d8838c9ca6016a';
   const API_KEY_SID = 'SKf53f8039a45a382f463f74ce51eead09';
   const API_KEY_SECRET = 'W9HvAgiUxqzoph6IEqLmSKeOe2xKu1O6';
+
+  const getAccessToken = roomName => {
+    // create an access token
+    const token = new AccessToken(
+      ACCOUNT_SID,
+      API_KEY_SID,
+      API_KEY_SECRET,
+      // generate a random unique identity for this participant
+      {identity: 'murari'},
+    );
+    // create a video grant for this specific room
+    const videoGrant = new VideoGrant({
+      room: roomName,
+    });
+
+    // add the video grant
+    token.addGrant(videoGrant);
+    // serialize the token and return
+    console.log(token.toJwt(), '==token==');
+    return token.toJwt();
+  };
+
+  useEffect(() => {
+    getAccessToken('room1');
+  }, []);
 
   // Function to generate a Twilio access token for a specific room
   // const generateTwilioAccessToken = (identity, roomName) => {
