@@ -20,30 +20,6 @@ import {encode} from 'base-64';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
-import AccessToken, {VideoGrant} from 'twilio/lib/jwt/AccessToken';
-
-// const {AccessToken} = require('twilio').jwt;
-// const {VideoGrant} = AccessToken;
-//
-// // Your Twilio Account SID and Auth Token
-// const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
-// const authToken = '54162d8847be259a57f4c3dc8a807467';
-// const baseUrl = 'https://video.twilio.com/v1';
-//
-// // Generate an access token for a participant
-// function generateAccessToken(identity: string) {
-//   const token = new AccessToken(accountSid, identity, authToken);
-//
-//   // Add video grant to the token
-//   const videoGrant = new VideoGrant();
-//   token.addGrant(videoGrant);
-//
-//   return token.toJwt();
-// }
-//
-// // Use the generateAccessToken function to create tokens for participants
-// const participant1Token = generateAccessToken('participant1');
-// const participant2Token = generateAccessToken('participant2');
 
 const createToken = async (userName: string) => {
   const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
@@ -53,6 +29,7 @@ const createToken = async (userName: string) => {
   try {
     // Authenticate with Twilio
     const authHeader = 'Basic ' + encode(`${accountSid}:${authToken}`);
+
     const headers = {
       Authorization: authHeader,
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -89,6 +66,7 @@ const createTwilioVideoRoom = async () => {
   try {
     // Authenticate with Twilio
     const authHeader = 'Basic ' + encode(`${accountSid}:${authToken}`);
+    console.log(authHeader, 'authheader');
     const headers = {
       Authorization: authHeader,
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -115,8 +93,6 @@ const createTwilioVideoRoom = async () => {
     return null;
   }
 };
-
-// Call the function to create a Twilio Video room
 
 interface IVideoCallScreen {
   navigation: any;
@@ -162,15 +138,6 @@ const VideoCallScreen: FunctionComponent<
     }
   }
 
-  // createToken(userName).then(roomSid => {
-  //   if (roomSid) {
-  //     // Handle success
-  //     console.log('success===');
-  //   } else {
-  //     // Handle failure
-  //   }
-  // });
-
   // Call the function to request permissions when needed.
   useEffect(() => {
     requestCameraAndAudioPermissions().then();
@@ -188,7 +155,7 @@ const VideoCallScreen: FunctionComponent<
   const _onConnectButtonPress2 = () => {
     twilioRef.current.connect({
       accessToken:
-        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc2OTg4MjUiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcwMjQyNSwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50MiIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.rV6V6sEUFHOVWC-n1pEZQRvdxDU7i6PpZQp3RdkjQOM', // Use the token for participant 1
+        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc3MTU4NzMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcxOTQ3MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50MiIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.9E6WDu7xSGwrdRpmO0K9xL4ikhsui4XNnaTJ6uebDoU', // Use the token for participant 1
     });
 
     setStatus('connecting');
@@ -199,59 +166,29 @@ const VideoCallScreen: FunctionComponent<
   const API_KEY_SID = 'SKf53f8039a45a382f463f74ce51eead09';
   const API_KEY_SECRET = 'W9HvAgiUxqzoph6IEqLmSKeOe2xKu1O6';
 
-  const getAccessToken = roomName => {
-    // create an access token
-    const token = new AccessToken(
-      ACCOUNT_SID,
-      API_KEY_SID,
-      API_KEY_SECRET,
-      // generate a random unique identity for this participant
-      {identity: 'murari'},
-    );
-    // create a video grant for this specific room
-    const videoGrant = new VideoGrant({
-      room: roomName,
-    });
-
-    // add the video grant
-    token.addGrant(videoGrant);
-    // serialize the token and return
-    console.log(token.toJwt(), '==token==');
-    return token.toJwt();
-  };
-
   useEffect(() => {
-    getAccessToken('room1');
+    // Define the request data as an object
+    const requestData = {
+      roomName: 'test-room',
+      identityName: 'murari',
+    };
+
+    // Define the headers
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    axios
+      .post('http://192.168.29.244:5000/join-room', requestData, {headers})
+      .then((response: {data: any}) => {
+        console.log(JSON.stringify(response.data));
+        Alert.alert('ok');
+      })
+      .catch((error: any) => {
+        console.log(error);
+        Alert.alert('error', String(error));
+      });
   }, []);
-
-  // Function to generate a Twilio access token for a specific room
-  // const generateTwilioAccessToken = (identity, roomName) => {
-  //   // Create an Access Token
-  //   const accessToken = new AccessToken(
-  //     ACCOUNT_SID,
-  //     API_KEY_SID,
-  //     API_KEY_SECRET,
-  //     {},
-  //   );
-  //
-  //   // Set the Identity of this token
-  //   accessToken.identity = identity;
-  //
-  //   // Grant access to Video
-  //   const grant = new VideoGrant();
-  //   grant.room = roomName;
-  //   accessToken.addGrant(grant);
-  //
-  //   // Serialize the token as a JWT
-  //   return accessToken.toJwt();
-  // };
-
-  // Example usage:
-  const identity = 'example-user'; // Replace with the user's identity
-  const roomName = 'cool room'; // Replace with the desired room name
-
-  //const tokenData = generateTwilioAccessToken(identity, roomName);
-  //console.log(tokenData, 'data');
 
   const _onEndButtonPress = () => {
     twilioRef.current.disconnect();
@@ -298,26 +235,6 @@ const VideoCallScreen: FunctionComponent<
       ]),
     );
   };
-
-  // const fetchToken = async () => {
-  //   try {
-  //     const res = await fetch(
-  //       `https://<your_base_url>/getToken?username=${username}&room=${room}`,
-  //     );
-  //     if (!res.ok) {
-  //       console.log('error');
-  //       Alert.alert('API not available');
-  //       return null;
-  //     }
-  //     const jwt = await res.text();
-  //     console.log(jwt, 'jwt');
-  //     return jwt;
-  //   } catch (error) {
-  //     console.log('error', error);
-  //     Alert.alert('An Error occurred');
-  //     return null;
-  //   }
-  // };
 
   const _onParticipantRemovedVideoTrack = ({participant, track}) => {
     console.log('onParticipantRemovedVideoTrack: ', participant, track);
@@ -480,3 +397,23 @@ const styles = StyleSheet.create({
     aspectRatio: 9 / 16,
   },
 });
+
+// const fetchToken = async () => {
+//   try {
+//     const res = await fetch(
+//       `https://<your_base_url>/getToken?username=${username}&room=${room}`,
+//     );
+//     if (!res.ok) {
+//       console.log('error');
+//       Alert.alert('API not available');
+//       return null;
+//     }
+//     const jwt = await res.text();
+//     console.log(jwt, 'jwt');
+//     return jwt;
+//   } catch (error) {
+//     console.log('error', error);
+//     Alert.alert('An Error occurred');
+//     return null;
+//   }
+// };
