@@ -4,6 +4,7 @@ import auth from '@react-native-firebase/auth';
 import {SafeAreaProvider} from 'react-native-safe-area-context/src/SafeAreaContext';
 import {LoggedInScreenStack, WelcomeScreenStack} from './navigation/navigation';
 import {ActivityIndicator} from 'react-native';
+import {SharedStack} from '../App';
 
 export default function Routes() {
   // const { user, loading } = useUser()
@@ -27,7 +28,7 @@ export default function Routes() {
 
   return (
     <SafeAreaProvider style={{backgroundColor: 'black'}}>
-      {user ? <LoggedInScreenStack /> : <WelcomeScreenStack />}
+      {user ? <SharedStack /> : <WelcomeScreenStack />}
     </SafeAreaProvider>
   );
 }

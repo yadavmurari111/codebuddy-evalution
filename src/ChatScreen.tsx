@@ -9,6 +9,7 @@ import VideoPlayerComponent from './components/video-player/video-player.compone
 import RecordAudioComponent from './components/record-audio/record-audio.component';
 import axios from 'axios';
 import {getToken} from './VideoCallScreen';
+import {useNavigation} from '@react-navigation/native';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
@@ -60,6 +61,7 @@ const ChatScreen = ({navigation}: any) => {
     roomName: 'test-room',
     identityName: 'murari',
   };
+  const Navigation = useNavigation();
 
   return (
     <View style={{flex: 1}}>
@@ -86,10 +88,8 @@ const ChatScreen = ({navigation}: any) => {
             padding: 5,
             backgroundColor: presetBase.colors.grey20,
           }}
-          onPress={() =>
-            getToken(requestData.roomName, requestData.identityName)
-          }>
-          <AntDesignIcons name={'lock'} size={40} color={'purple'} />
+          onPress={() => Navigation.navigate('IncomingCall', {})}>
+          <AntDesignIcons name={'phone-call'} size={40} color={'purple'} />
         </TouchableOpacity>
 
         <TouchableOpacity

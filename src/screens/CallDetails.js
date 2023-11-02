@@ -25,6 +25,7 @@ import {
   PanGestureHandler,
 } from 'react-native-gesture-handler';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
+import ROUTE_NAME from '../navigation/navigation-constants';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -144,6 +145,7 @@ const CallDetails = ({navigation}) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
+            onPress={() => navigation.navigate(ROUTE_NAME.CHAT_SCREEN)}
             style={{
               width: 70,
               height: 70,

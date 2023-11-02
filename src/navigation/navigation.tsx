@@ -7,6 +7,10 @@ import ChatExportToPDF from '../ChatToPdfScreen';
 import SendVideoComponent from '../components/send-video/send-video.component';
 import FullscreenVideoPlayer from '../components/video-player/fullscreen-video-player.component';
 import VideoCallScreen from '../VideoCallScreen';
+import {createSharedElementStackNavigator} from 'react-navigation-shared-element';
+import IncomingCall from '../screens/IncomingCall';
+import {CardStyleInterpolators, TransitionSpecs} from '@react-navigation/stack';
+import CallDetails from '../screens/CallDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -62,5 +66,65 @@ export const LoggedInScreenStack = () => {
         options={{headerShown: true, title: ''}}
       />
     </Stack.Navigator>
+  );
+};
+const {Navigator: SharedNavigator, Screen: SharedScreen} =
+  createSharedElementStackNavigator();
+
+const cardInterpolator = {
+  cardStyleInterpolator: ({current: {progress}}) => {
+    return {
+      cardStyle: {
+        opacity: progress,
+      },
+    };
+  },
+  transitionSpec: {
+    open: {animation: 'timing', config: {duration: 300}},
+    close: {animation: 'timing', config: {duration: 300}},
+  },
+};
+
+export const SharedStack = () => {
+  return (
+    <SharedNavigator>
+      <SharedScreen name={ROUTE_NAME.CHAT_SCREEN} component={ChatScreen} />
+
+      <SharedScreen
+        name="IncomingCall"
+        component={IncomingCall}
+        options={{
+          headerShown: false,
+          cardStyleInterpolator: CardStyleInterpolators.forModalPresentationIOS,
+          cardStyle: {backgroundColor: 'transparent'},
+          gestureEnabled: true,
+          gestureDirection: 'vertical',
+          gestureResponseDistance: {vertical: 1000},
+          transitionSpec: {
+            open: TransitionSpecs.TransitionIOSSpec,
+            close: TransitionSpecs.TransitionIOSSpec,
+            // open: { animation: 'spring', config: { duration: 500, bounciness: 0 } },
+            // close: { animation: 'timing', config: { duration: 300 } }
+          },
+        }}
+      />
+      <SharedScreen
+        name="CallDetail"
+        options={{
+          ...cardInterpolator,
+          transitionSpec: {
+            open: TransitionSpecs.TransitionIOSSpec,
+            close: TransitionSpecs.TransitionIOSSpec,
+          },
+          headerShown: false,
+        }}
+        component={CallDetails}
+      />
+      {/*<SharedScreen*/}
+      {/*  name="DiaryDetail"*/}
+      {/*  options={{...cardInterpolator, cardStyle: {backgroundColor: '#000'}}}*/}
+      {/*  component={DiaryDetail}*/}
+      {/*/>*/}
+    </SharedNavigator>
   );
 };
