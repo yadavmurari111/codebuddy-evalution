@@ -10,7 +10,6 @@ import {
   PermissionsAndroid,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -56,13 +55,9 @@ const VideoCallScreen: FunctionComponent<
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [status, setStatus] = useState('disconnected');
-  const [userName, setUserName] = useState('');
-  const [participants, setParticipants] = useState(new Map());
   const [videoTracks, setVideoTracks] = useState(new Map());
   console.log(videoTracks, '===');
-  const [token, setToken] = useState(
-    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTY1MDcxMzkiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NjUxMDczOSwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50SWQxIiwidmlkZW8iOnsicm9vbSI6InJvb20ifX19.uHXpC-OZ0hIOBYz7q4cw1nJedntodEbeqSBCWUYCMXA',
-  );
+
   const twilioRef = useRef(null);
 
   const auth = useAuth();
@@ -99,8 +94,6 @@ const VideoCallScreen: FunctionComponent<
     requestCameraAndAudioPermissions().then();
   }, []);
 
-  const [data, setData] = useState('');
-
   useEffect(() => {
     const db = firebase.firestore();
 
@@ -113,14 +106,10 @@ const VideoCallScreen: FunctionComponent<
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(snapshot => {
       // Process the changes here
-      console.log(snapshot, 'snapshot');
+      console.log(snapshot, '--snapshot data--');
 
-      setData(snapshot);
-      if (
-        snapshot?._data?.caller_uid === uid &&
-        snapshot?._data?.callStatus === 'calling'
-      ) {
-        Alert.alert(snapshot._data.to + ' calling you', '', [
+      if (snapshot?._data?.callStatus === 'calling') {
+        Alert.alert(snapshot._data.caller_uid + ' calling you', '', [
           {text: 'pick up', onPress: () => updateFirestore('connected')},
           {text: 'end', onPress: () => updateFirestore('disconnected')},
         ]);
@@ -132,7 +121,6 @@ const VideoCallScreen: FunctionComponent<
       unsubscribe();
     };
   }, []);
-  console.log(data?._data?.caller, '---data---');
 
   const putFirestore = async () => {
     // Get a reference to the Firestore database
@@ -141,12 +129,12 @@ const VideoCallScreen: FunctionComponent<
     const roomname = 'room';
 
     const tokenForFriend = await getToken(roomname, friendUid);
-    console.log(tokenForFriend, 'tokenForFriend');
+    console.log(tokenForFriend, '==tokenForFriend==');
     // Define the data you want to add
     const sendData = {
       caller_uid: String(uid),
       recipient_uid: String(friendUid),
-      callTime: new Date(),
+      callTime: new Date().getTime(),
       callStatus: 'calling',
       roomName: roomname,
       tokenToJoinRoom: tokenForFriend,
@@ -188,13 +176,16 @@ const VideoCallScreen: FunctionComponent<
       console.error('Error updating call status: ', error);
     }
   };
-  const _onConnectButtonPress = async () => {
+  const onConnectButtonPress = async () => {
     await putFirestore();
     const roomname = 'room';
 
     const tokenForFriend = await getToken(roomname, uid);
 
-    twilioRef.current.connect({accessToken: tokenForFriend});
+    twilioRef.current.connect({
+      accessToken: tokenForFriend,
+      enableVideo: false,
+    });
 
     setStatus('connecting');
   };
@@ -228,39 +219,41 @@ const VideoCallScreen: FunctionComponent<
   //     });
   // }, []);
 
-  const _onEndButtonPress = () => {
+  const onEndButtonPress = () => {
     twilioRef.current.disconnect();
+    updateFirestore('disconnected');
+    setStatus('disconnected');
   };
 
-  const _onMuteButtonPress = () => {
+  const onMuteButtonPress = () => {
     twilioRef.current
       .setLocalAudioEnabled(!isAudioEnabled)
       .then(isEnabled => setIsAudioEnabled(isEnabled));
   };
 
-  const _onFlipButtonPress = () => {
+  const onFlipButtonPress = () => {
     twilioRef.current.flipCamera();
   };
 
-  const _onRoomDidConnect = ({roomName, error}) => {
+  const onRoomConnect = ({roomName, error}) => {
     console.log('onRoomDidConnect: ', roomName);
 
     setStatus('connected');
   };
 
-  const _onRoomDidDisconnect = ({roomName, error}) => {
+  const onRoomDisconnect = ({roomName, error}) => {
     console.log('[Disconnect]ERROR: ', error);
 
     setStatus('disconnected');
   };
 
-  const _onRoomDidFailToConnect = error => {
+  const onRoomFailToConnect = error => {
     console.log('[FailToConnect]ERROR: ', error);
 
     setStatus('disconnected');
   };
 
-  const _onParticipantAddedVideoTrack = ({participant, track}) => {
+  const onParticipantAddedVideoTrack = ({participant, track}) => {
     console.log('onParticipantAddedVideoTrack: ', participant, track);
 
     setVideoTracks(
@@ -274,7 +267,7 @@ const VideoCallScreen: FunctionComponent<
     );
   };
 
-  const _onParticipantRemovedVideoTrack = ({participant, track}) => {
+  const onParticipantRemovedVideoTrack = ({participant, track}) => {
     console.log('onParticipantRemovedVideoTrack: ', participant, track);
 
     const videoTracksLocal = videoTracks;
@@ -288,8 +281,9 @@ const VideoCallScreen: FunctionComponent<
       {status === 'disconnected' && (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
           <Text style={{paddingBottom: 30}}>React Native Twilio Video</Text>
+          <Text style={{paddingBottom: 30}}>{status}</Text>
 
-          <Button title="Connect" onPress={_onConnectButtonPress} />
+          <Button title="Connect" onPress={onConnectButtonPress} />
         </View>
       )}
 
@@ -311,7 +305,7 @@ const VideoCallScreen: FunctionComponent<
                 </View>
                 <View style={{position: 'absolute', borderWidth: 2}}>
                   <TwilioVideoLocalView
-                    enabled={true}
+                    enabled={false}
                     style={styles.localVideo}
                   />
                 </View>
@@ -322,7 +316,7 @@ const VideoCallScreen: FunctionComponent<
           <View style={styles.optionsContainer}>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={_onFlipButtonPress}>
+              onPress={onFlipButtonPress}>
               <MaterialCommunityIcons
                 name={'camera-flip'}
                 size={24}
@@ -331,14 +325,16 @@ const VideoCallScreen: FunctionComponent<
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={_onMuteButtonPress}>
+              onPress={onMuteButtonPress}>
               <AntDesignIcons
                 name={isAudioEnabled ? 'mic' : 'mic-off'}
                 size={24}
                 color={'white'}
               />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.optionButton} onPress={() => {}}>
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => setIsVideoEnabled(!isVideoEnabled)}>
               <AntDesignIcons
                 name={isVideoEnabled ? 'videocam' : 'videocam-off'}
                 size={24}
@@ -347,7 +343,7 @@ const VideoCallScreen: FunctionComponent<
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.EndButton}
-              onPress={_onEndButtonPress}>
+              onPress={onEndButtonPress}>
               <AntDesignIcons name={'call'} size={24} color={'white'} />
             </TouchableOpacity>
           </View>
@@ -356,11 +352,11 @@ const VideoCallScreen: FunctionComponent<
 
       <TwilioVideo
         ref={twilioRef}
-        onRoomDidConnect={_onRoomDidConnect}
-        onRoomDidDisconnect={_onRoomDidDisconnect}
-        onRoomDidFailToConnect={_onRoomDidFailToConnect}
-        onParticipantAddedVideoTrack={_onParticipantAddedVideoTrack}
-        onParticipantRemovedVideoTrack={_onParticipantRemovedVideoTrack}
+        onRoomDidConnect={onRoomConnect}
+        onRoomDidDisconnect={onRoomDisconnect}
+        onRoomDidFailToConnect={onRoomFailToConnect}
+        onParticipantAddedVideoTrack={onParticipantAddedVideoTrack}
+        onParticipantRemovedVideoTrack={onParticipantRemovedVideoTrack}
       />
     </View>
   );
