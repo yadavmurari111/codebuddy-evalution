@@ -1,5 +1,5 @@
-import React, {useState} from 'react';
-import {ScrollView, TouchableOpacity, View} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {Alert, ScrollView, TouchableOpacity, View} from 'react-native';
 import AntDesignIcons from 'react-native-vector-icons/Feather';
 import ROUTE_NAME from './navigation/navigation-constants';
 import AudioMsgComponent from './components/audio-msg/audio-msg.component';
@@ -7,6 +7,7 @@ import {presetBase} from './utils/color';
 import SendVideoComponent from './components/send-video/send-video.component';
 import VideoPlayerComponent from './components/video-player/video-player.component';
 import RecordAudioComponent from './components/record-audio/record-audio.component';
+import axios from 'axios';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
@@ -32,6 +33,29 @@ const ChatScreen = ({navigation}: any) => {
     });
   };
 
+  const getToken = () => {
+    const requestData = {
+      roomName: 'test-room',
+      identityName: 'murari',
+    };
+
+    // Define the headers
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    //http://192.168.29.244:5000/join-room
+    axios
+      .post('http://localhost:5000/join-room', requestData, {headers})
+      .then((response: {data: any}) => {
+        console.log(JSON.stringify(response.data));
+        Alert.alert('ok');
+      })
+      .catch((error: any) => {
+        console.log(error);
+        Alert.alert('error', String(error));
+      });
+  };
+
   return (
     <View style={{flex: 1}}>
       <View
@@ -51,6 +75,16 @@ const ChatScreen = ({navigation}: any) => {
           onPress={navigateToSettings}>
           <AntDesignIcons name={'settings'} size={40} color={'purple'} />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            borderRadius: 100,
+            padding: 5,
+            backgroundColor: presetBase.colors.grey20,
+          }}
+          onPress={getToken}>
+          <AntDesignIcons name={'lock'} size={40} color={'purple'} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={{
             borderRadius: 100,

@@ -20,6 +20,8 @@ import {encode} from 'base-64';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
+import firestore, {firebase} from '@react-native-firebase/firestore';
+import {useAuth} from './AuthProvider';
 
 const createToken = async (userName: string) => {
   const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
@@ -115,6 +117,12 @@ const VideoCallScreen: FunctionComponent<
   );
   const twilioRef = useRef(null);
 
+  const auth = useAuth();
+  console.log(auth.user.email, '--auth');
+  const uid = auth.user.email === 'fitmurari@gmail.com' ? 'murari' : 'akram';
+  const friendUid =
+    auth.user.email !== 'fitmurari@gmail.com' ? 'murari' : 'akram';
+
   async function requestCameraAndAudioPermissions() {
     try {
       const cameraPermission = PermissionsAndroid.PERMISSIONS.CAMERA;
@@ -143,22 +151,111 @@ const VideoCallScreen: FunctionComponent<
     requestCameraAndAudioPermissions().then();
   }, []);
 
-  const _onConnectButtonPress = () => {
-    twilioRef.current.connect({
-      accessToken:
-        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc2OTg2ODMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcwMjI4MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50ICIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.hPEKKipDZi0ZZhZLDmBPlyb3C4Vs9cTRCSZlycFQFJg', // Use the token for participant 1
+  const [data, setData] = useState('');
+
+  useEffect(() => {
+    const db = firebase.firestore();
+
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(uid)
+      .collection('watchers')
+      .doc('incoming-call');
+
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(snapshot => {
+      // Process the changes here
+      console.log(snapshot, 'snapshot');
+
+      setData(snapshot);
+      if (
+        snapshot?._data?.to === uid &&
+        snapshot?._data?.callStatus === 'calling'
+      ) {
+        Alert.alert(snapshot._data.to + ' calling you', '', [
+          {text: 'pick up', onPress: () => updateFirestore('connected')},
+          {text: 'end', onPress: () => updateFirestore('disconnected')},
+        ]);
+      }
     });
 
-    setStatus('connecting');
+    return () => {
+      // Unsubscribe the listener when the component unmounts
+      unsubscribe();
+    };
+  }, []);
+  console.log(data?._data?.caller, '---data---');
+
+  const putFirestore = async () => {
+    // Get a reference to the Firestore database
+    const db = firebase.firestore();
+
+    // Define the data you want to add
+    const sendData = {
+      caller: 'calling murari',
+      to: friendUid,
+      callTime: new Date(),
+      callStatus: 'calling',
+      tokenToJoinRoom: 'token',
+    };
+
+    // Reference to the collection
+    const collectionRef = db
+      .collection('users')
+      .doc(friendUid)
+      .collection('watchers')
+      .doc('incoming-call');
+
+    // Add data to the document within the collection
+    await collectionRef
+      .set(sendData)
+      .then(() => {
+        console.log('Data added successfully!');
+      })
+      .catch(error => {
+        console.error('Error adding data: ', error);
+      });
   };
 
-  const _onConnectButtonPress2 = () => {
-    twilioRef.current.connect({
-      accessToken:
-        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc3MTU4NzMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcxOTQ3MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50MiIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.9E6WDu7xSGwrdRpmO0K9xL4ikhsui4XNnaTJ6uebDoU', // Use the token for participant 1
-    });
+  const updateFirestore = async (status: string) => {
+    const db = firebase.firestore();
+    const updateData = {
+      callStatus: status, // Replace 'updatedStatus' with the new call status value
+    };
+    const collectionRef = db
+      .collection('users')
+      .doc(uid)
+      .collection('watchers')
+      .doc('incoming-call');
 
-    setStatus('connecting');
+    try {
+      await collectionRef.update(updateData);
+      console.log('Call status updated successfully!');
+    } catch (error) {
+      console.error('Error updating call status: ', error);
+    }
+  };
+  const _onConnectButtonPress = async () => {
+    const uid = auth.user.email === 'fitmurari@gmail.com' ? 'murari' : 'akram';
+    console.log(uid, '----uid----');
+    await putFirestore(uid);
+    // twilioRef.current.connect({
+    //   accessToken:
+    //     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc2OTg2ODMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcwMjI4MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50ICIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.hPEKKipDZi0ZZhZLDmBPlyb3C4Vs9cTRCSZlycFQFJg', // Use the token for participant 1
+    // });
+    //
+    // setStatus('connecting');
+  };
+
+  const _onConnectButtonPress2 = async () => {
+    await putFirestore('murari');
+
+    // twilioRef.current.connect({
+    //   accessToken:
+    //     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc3MTU4NzMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcxOTQ3MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50MiIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.9E6WDu7xSGwrdRpmO0K9xL4ikhsui4XNnaTJ6uebDoU', // Use the token for participant 1
+    // });
+    //
+    // setStatus('connecting');
   };
 
   // Substitute your Twilio AccountSid and API Key details
@@ -166,29 +263,29 @@ const VideoCallScreen: FunctionComponent<
   const API_KEY_SID = 'SKf53f8039a45a382f463f74ce51eead09';
   const API_KEY_SECRET = 'W9HvAgiUxqzoph6IEqLmSKeOe2xKu1O6';
 
-  useEffect(() => {
-    // Define the request data as an object
-    const requestData = {
-      roomName: 'test-room',
-      identityName: 'murari',
-    };
-
-    // Define the headers
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-
-    axios
-      .post('http://192.168.29.244:5000/join-room', requestData, {headers})
-      .then((response: {data: any}) => {
-        console.log(JSON.stringify(response.data));
-        Alert.alert('ok');
-      })
-      .catch((error: any) => {
-        console.log(error);
-        Alert.alert('error', String(error));
-      });
-  }, []);
+  // useEffect(() => {
+  //   // Define the request data as an object
+  //   const requestData = {
+  //     roomName: 'test-room',
+  //     identityName: 'murari',
+  //   };
+  //
+  //   // Define the headers
+  //   const headers = {
+  //     'Content-Type': 'application/json',
+  //   };
+  //
+  //   axios
+  //     .post('http://192.168.29.244:5000/join-room', requestData, {headers})
+  //     .then((response: {data: any}) => {
+  //       console.log(JSON.stringify(response.data));
+  //       Alert.alert('ok');
+  //     })
+  //     .catch((error: any) => {
+  //       console.log(error);
+  //       Alert.alert('error', String(error));
+  //     });
+  // }, []);
 
   const _onEndButtonPress = () => {
     twilioRef.current.disconnect();
@@ -250,6 +347,7 @@ const VideoCallScreen: FunctionComponent<
       {status === 'disconnected' && (
         <View>
           <Text style={styles.welcome}>React Native Twilio Video</Text>
+          <Text style={styles.welcome}>{data?._data?.to}</Text>
           <TextInput
             style={{borderWidth: 1}}
             autoCapitalize="none"

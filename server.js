@@ -73,6 +73,7 @@ app.post('/join-room', async (req, res) => {
     const roomName = req.body.roomName;
     const identityName = req.body.identityName;
     console.log(roomName, '-----roomName-----');
+    console.log(identityName, '-----identityName-----');
     // find or create a room with the given roomName
     await findOrCreateRoom(roomName);
     // generate an Access Token for a participant in this room
