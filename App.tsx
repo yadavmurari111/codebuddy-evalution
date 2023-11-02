@@ -9,6 +9,10 @@ import ChatScreen from './src/ChatScreen';
 import IncomingCall from './src/screens/IncomingCall';
 import {CardStyleInterpolators, TransitionSpecs} from '@react-navigation/stack';
 import CallDetails from './src/screens/CallDetails';
+import ChatExportToPDF from './src/ChatToPdfScreen';
+import SendVideoComponent from './src/components/send-video/send-video.component';
+import FullscreenVideoPlayer from './src/components/video-player/fullscreen-video-player.component';
+import VideoCallScreen from './src/VideoCallScreen';
 // enableScreens(true);
 export const animationRef = createRef({});
 animationRef.current = {};
@@ -65,11 +69,24 @@ export const SharedStack = () => {
         }}
         component={CallDetails}
       />
-      {/*<SharedScreen*/}
-      {/*  name="DiaryDetail"*/}
-      {/*  options={{...cardInterpolator, cardStyle: {backgroundColor: '#000'}}}*/}
-      {/*  component={DiaryDetail}*/}
-      {/*/>*/}
+      <SharedScreen
+        name={ROUTE_NAME.SETTINGS_SCREEN}
+        component={ChatExportToPDF}
+      />
+      <SharedScreen
+        name={ROUTE_NAME.VIDEO_TRIM_SCREEN}
+        component={SendVideoComponent}
+      />
+      <SharedScreen
+        name={ROUTE_NAME.VIDEO_FULL_SCREEN}
+        component={FullscreenVideoPlayer}
+        options={{headerShown: true, title: ''}}
+      />
+      <SharedScreen
+        name={ROUTE_NAME.VIDEO_CALL_SCREEN}
+        component={VideoCallScreen}
+        options={{headerShown: true, title: ''}}
+      />
     </SharedNavigator>
   );
 };
