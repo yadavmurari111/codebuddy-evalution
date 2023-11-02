@@ -8,6 +8,7 @@ import SendVideoComponent from './components/send-video/send-video.component';
 import VideoPlayerComponent from './components/video-player/video-player.component';
 import RecordAudioComponent from './components/record-audio/record-audio.component';
 import axios from 'axios';
+import {getToken} from './VideoCallScreen';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
@@ -33,27 +34,31 @@ const ChatScreen = ({navigation}: any) => {
     });
   };
 
-  const getToken = () => {
-    const requestData = {
-      roomName: 'test-room',
-      identityName: 'murari',
-    };
-
-    // Define the headers
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    //http://192.168.29.244:5000/join-room
-    axios
-      .post('http://localhost:5000/join-room', requestData, {headers})
-      .then((response: {data: any}) => {
-        console.log(JSON.stringify(response.data));
-        Alert.alert('ok');
-      })
-      .catch((error: any) => {
-        console.log(error);
-        Alert.alert('error', String(error));
-      });
+  // const getToken = async () => {
+  //   const requestData = {
+  //     roomName: 'test-room',
+  //     identityName: 'murari',
+  //   };
+  //
+  //   // Define the headers
+  //   const headers = {
+  //     'Content-Type': 'application/json',
+  //   };
+  //   //http://192.168.29.244:5000/join-room
+  //   await axios
+  //     .post('http://192.168.29.244:5000/join-room', requestData, {headers})
+  //     .then((response: {data: any}) => {
+  //       console.log(JSON.stringify(response.data));
+  //       Alert.alert('ok');
+  //     })
+  //     .catch((error: any) => {
+  //       console.log(error);
+  //       Alert.alert('error', String(error));
+  //     });
+  // };
+  const requestData = {
+    roomName: 'test-room',
+    identityName: 'murari',
   };
 
   return (
@@ -81,7 +86,9 @@ const ChatScreen = ({navigation}: any) => {
             padding: 5,
             backgroundColor: presetBase.colors.grey20,
           }}
-          onPress={getToken}>
+          onPress={() =>
+            getToken(requestData.roomName, requestData.identityName)
+          }>
           <AntDesignIcons name={'lock'} size={40} color={'purple'} />
         </TouchableOpacity>
 

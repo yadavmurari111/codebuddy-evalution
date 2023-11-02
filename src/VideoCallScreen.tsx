@@ -7,93 +7,41 @@ import {
 import {
   Alert,
   Button,
+  PermissionsAndroid,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import {PermissionsAndroid} from 'react-native';
 import {presetBase} from './utils/color';
-import {encode} from 'base-64';
 
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
-import firestore, {firebase} from '@react-native-firebase/firestore';
+import {firebase} from '@react-native-firebase/firestore';
 import {useAuth} from './AuthProvider';
 
-const createToken = async (userName: string) => {
-  const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
-  const authToken = '54162d8847be259a57f4c3dc8a807467';
-  const baseUrl = 'https://video.twilio.com/v1';
+export const getToken = async (roomName: string, identityName: string) => {
+  const requestData = {roomName, identityName};
 
-  try {
-    // Authenticate with Twilio
-    const authHeader = 'Basic ' + encode(`${accountSid}:${authToken}`);
+  const headers = {'Content-Type': 'application/json'};
 
-    const headers = {
-      Authorization: authHeader,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-
-    // Create the room
-    const roomData = {
-      StatusCallback: 'https://example.org',
-      Type: 'peer-to-peer',
-      UniqueName: 'SalesMeeting',
-    };
-
-    const response = await axios.get(
-      `${baseUrl}/getToken?userName=${userName}`,
-    );
-
-    if (response.status === 201) {
-      console.log('Twilio Video room created. SID:', response.data.sid);
-      return response.data.sid;
-    } else {
-      console.error('Failed to create Twilio Video room:', response.status);
+  //http://192.168.29.244:5000/join-room
+  return await axios
+    .post('http://192.168.29.244:5000/join-room', requestData, {headers})
+    .then((response: {data: any}) => {
+      if (response.data) {
+        console.log(JSON.stringify(response.data.token));
+        return response?.data.token;
+      }
+      //Alert.alert('ok');
+    })
+    .catch((error: any) => {
+      console.log(error);
+      Alert.alert('error', String(error));
       return null;
-    }
-  } catch (error) {
-    console.error('Error creating Twilio Video room:', error);
-    return null;
-  }
-};
-
-const createTwilioVideoRoom = async () => {
-  const accountSid = 'ACaae70ff76447aa3604d8838c9ca6016a';
-  const authToken = '54162d8847be259a57f4c3dc8a807467';
-  const baseUrl = 'https://video.twilio.com/v1';
-  try {
-    // Authenticate with Twilio
-    const authHeader = 'Basic ' + encode(`${accountSid}:${authToken}`);
-    console.log(authHeader, 'authheader');
-    const headers = {
-      Authorization: authHeader,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-
-    // Create the room
-    const roomData = {
-      StatusCallback: 'https://example.org',
-      Type: 'peer-to-peer',
-      UniqueName: 'SalesMeeting',
-    };
-
-    const response = await axios.post(`${baseUrl}/Rooms`, roomData, {headers});
-
-    if (response.status === 201) {
-      console.log('Twilio Video room created. SID:', response.data.sid);
-      return response.data.sid;
-    } else {
-      console.error('Failed to create Twilio Video room:', response.status);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error creating Twilio Video room:', error);
-    return null;
-  }
+    });
 };
 
 interface IVideoCallScreen {
@@ -190,13 +138,18 @@ const VideoCallScreen: FunctionComponent<
     // Get a reference to the Firestore database
     const db = firebase.firestore();
 
+    const roomname = 'room';
+
+    const tokenForFriend = await getToken(roomname, friendUid);
+    console.log(tokenForFriend, 'tokenForFriend');
     // Define the data you want to add
     const sendData = {
-      caller: 'calling murari',
-      to: friendUid,
+      caller_uid: String(uid),
+      recipient_uid: String(friendUid),
       callTime: new Date(),
       callStatus: 'calling',
-      tokenToJoinRoom: 'token',
+      roomName: roomname,
+      tokenToJoinRoom: tokenForFriend,
     };
 
     // Reference to the collection
@@ -345,31 +298,10 @@ const VideoCallScreen: FunctionComponent<
   return (
     <View style={styles.container}>
       {status === 'disconnected' && (
-        <View>
-          <Text style={styles.welcome}>React Native Twilio Video</Text>
-          <Text style={styles.welcome}>{data?._data?.to}</Text>
-          <TextInput
-            style={{borderWidth: 1}}
-            autoCapitalize="none"
-            value={token}
-            onChangeText={text => setToken(text)}
-          />
-          <TextInput
-            style={{borderWidth: 1}}
-            autoCapitalize="none"
-            value={token}
-            onChangeText={text => setUserName(text)}
-          />
-          <Button
-            title="Connect"
-            style={styles.button}
-            onPress={_onConnectButtonPress}
-          />
-          <Button
-            title="Connect2"
-            style={styles.button}
-            onPress={_onConnectButtonPress2}
-          />
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <Text style={{paddingBottom: 30}}>React Native Twilio Video</Text>
+
+          <Button title="Connect" onPress={_onConnectButtonPress} />
         </View>
       )}
 
@@ -420,7 +352,7 @@ const VideoCallScreen: FunctionComponent<
             </TouchableOpacity>
             <TouchableOpacity style={styles.optionButton} onPress={() => {}}>
               <AntDesignIcons
-                name={isAudioEnabled ? 'videocam' : 'videocam-off'}
+                name={isVideoEnabled ? 'videocam' : 'videocam-off'}
                 size={24}
                 color={'white'}
               />
