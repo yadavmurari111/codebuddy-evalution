@@ -117,7 +117,7 @@ const VideoCallScreen: FunctionComponent<
 
       setData(snapshot);
       if (
-        snapshot?._data?.to === uid &&
+        snapshot?._data?.caller_uid === uid &&
         snapshot?._data?.callStatus === 'calling'
       ) {
         Alert.alert(snapshot._data.to + ' calling you', '', [
@@ -189,26 +189,14 @@ const VideoCallScreen: FunctionComponent<
     }
   };
   const _onConnectButtonPress = async () => {
-    const uid = auth.user.email === 'fitmurari@gmail.com' ? 'murari' : 'akram';
-    console.log(uid, '----uid----');
-    await putFirestore(uid);
-    // twilioRef.current.connect({
-    //   accessToken:
-    //     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc2OTg2ODMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcwMjI4MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50ICIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.hPEKKipDZi0ZZhZLDmBPlyb3C4Vs9cTRCSZlycFQFJg', // Use the token for participant 1
-    // });
-    //
-    // setStatus('connecting');
-  };
+    await putFirestore();
+    const roomname = 'room';
 
-  const _onConnectButtonPress2 = async () => {
-    await putFirestore('murari');
+    const tokenForFriend = await getToken(roomname, uid);
 
-    // twilioRef.current.connect({
-    //   accessToken:
-    //     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjLTE2OTc3MTU4NzMiLCJpc3MiOiJTS2ZiZWNkYTg2ZjMxZGMxMDIzNjAwZTgxODVhMDc5NmJjIiwic3ViIjoiQUNhYWU3MGZmNzY0NDdhYTM2MDRkODgzOGM5Y2E2MDE2YSIsImV4cCI6MTY5NzcxOTQ3MywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiY2xpZW50MiIsInZpZGVvIjp7InJvb20iOiJyb29tMSJ9fX0.9E6WDu7xSGwrdRpmO0K9xL4ikhsui4XNnaTJ6uebDoU', // Use the token for participant 1
-    // });
-    //
-    // setStatus('connecting');
+    twilioRef.current.connect({accessToken: tokenForFriend});
+
+    setStatus('connecting');
   };
 
   // Substitute your Twilio AccountSid and API Key details
