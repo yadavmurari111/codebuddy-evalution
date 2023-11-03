@@ -95,23 +95,6 @@ const ChatScreen = ({navigation}: any) => {
     };
   }, []);
 
-  const updateFirestore = async (status: string) => {
-    const db = firebase.firestore();
-    const updateData = {
-      callStatus: status, // Replace 'updatedStatus' with the new call status value
-    };
-    const collectionRef = db
-      .collection('users')
-      .doc('akram')
-      .collection('watchers')
-      .doc('incoming-call');
-    try {
-      await collectionRef.update(updateData);
-      console.log('Call status updated successfully!');
-    } catch (error) {
-      console.error('Error updating call status: ', error);
-    }
-  };
   const Navigation = useNavigation();
 
   const makeCallRequest = async () => {

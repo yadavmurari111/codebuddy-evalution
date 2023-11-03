@@ -19,6 +19,7 @@ import Animated, {
 import {SharedElement} from 'react-navigation-shared-element';
 import {useIsFocused} from '@react-navigation/native';
 import {animationRef} from '../../App';
+import {firebase} from '@react-native-firebase/firestore';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -34,16 +35,35 @@ const ACTION_BUTTON_HEIGHT = 50;
 const DURATION = 2000;
 const IncomingCall = ({navigation, route}) => {
   const {
-    data: {tokenToJoinRoom},
+    data: {tokenToJoinRoom, caller_uid},
   } = route.params || {};
 
   const [state, setstate] = useState(true);
   const [state2, setStateAccept] = useState(true);
 
-  const onNavigate = () => {
+  const updateFirestore = async status => {
+    const db = firebase.firestore();
+    const updateData = {
+      callStatus: status, // Replace 'updatedStatus' with the new call status value
+    };
+    const collectionRef = db
+      .collection('users')
+      .doc(caller_uid)
+      .collection('watchers')
+      .doc('incoming-call');
+    try {
+      await collectionRef.update(updateData);
+      console.log('Call status updated successfully!');
+    } catch (error) {
+      console.error('Error updating call status: ', error);
+    }
+  };
+
+  const onNavigate = async () => {
     // Object.keys(animationRef.current).forEach((key) => {
     //     cancelAnimation(animationRef.current[key])
     // })
+    await updateFirestore('connected'); // update firestore call status for friend == connecting
 
     setstate(false);
     acceptAnimatedValue.value = withTiming(1, {duration: 500}, () => {
