@@ -31,6 +31,7 @@ import {TwilioVideo} from 'react-native-twilio-video-webrtc';
 import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
 import {getToken} from '../VideoCallScreen';
+import CallTimer from './callTimer';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -157,42 +158,9 @@ const CallDetails = ({navigation, route}) => {
   const friendUid = 'akram';
   // connect call after accepting
   useEffect(() => {
-    if (isCalling !== true) {
-      onConnectTwilio().then(() =>
-        console.log('you accepted call from your friend'),
-      );
-    }
-  }, []);
-
-  // this lister for my call response from friend (accepted or rejected)
-  useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(friendUid)
-      .collection('watchers')
-      .doc('incoming-call');
-    // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-      // Process the changes here
-      console.log(snapshot, '--snapshot data--');
-      if (snapshot?._data?.callStatus) {
-        switch (snapshot?._data?.callStatus) {
-          case 'connected':
-            await onConnectTwilio();
-            break;
-          case 'disconnected':
-            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
-            break;
-          default:
-            break;
-        }
-      }
-    });
-    return () => {
-      // Unsubscribe the listener when the component unmounts
-      unsubscribe();
-    };
+    onConnectTwilio().then(() =>
+      console.log('you accepted call from your friend'),
+    );
   }, []);
 
   return (
@@ -280,7 +248,7 @@ const CallDetails = ({navigation, route}) => {
         </Animated.View>
         {/* </Animated.View> */}
         <View style={{flex: 1, justifyContent: 'center'}}>
-          {status === 'disconnected' && isCalling && (
+          {status === 'disconnected' ? (
             <Text
               style={{
                 textAlign: 'center',
@@ -288,8 +256,10 @@ const CallDetails = ({navigation, route}) => {
                 fontWeight: '700',
                 color: 'white',
               }}>
-              calling akram...
+              {isCalling ? 'Calling...' : 'Connecting'}
             </Text>
+          ) : (
+            <CallTimer />
           )}
           <Animated.View style={[{position: 'absolute', top: 0}]}>
             <SmallWindow animation={animation} />

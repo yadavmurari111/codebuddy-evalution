@@ -20,7 +20,7 @@ const Mute = ({muteButtonHandler}) => {
   const standX = 50 - standHeight / 2;
   const standY = 75;
   const color = 'grey';
-  const animatedValue = useSharedValue(0);
+  const animatedValue = useSharedValue(1);
   const animatedProps = useAnimatedProps(() => {
     const animateLine = interpolate(animatedValue.value, [0, 1], [90, 10]);
     return {
