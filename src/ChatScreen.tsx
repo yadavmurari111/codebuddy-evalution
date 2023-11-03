@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, TouchableOpacity, View} from 'react-native';
+import {ScrollView, TouchableOpacity, View} from 'react-native';
 import AntDesignIcons from 'react-native-vector-icons/Feather';
 import ROUTE_NAME from './navigation/navigation-constants';
 import AudioMsgComponent from './components/audio-msg/audio-msg.component';
@@ -7,61 +7,160 @@ import {presetBase} from './utils/color';
 import SendVideoComponent from './components/send-video/send-video.component';
 import VideoPlayerComponent from './components/video-player/video-player.component';
 import RecordAudioComponent from './components/record-audio/record-audio.component';
-import axios from 'axios';
-import {getToken} from './VideoCallScreen';
 import {useNavigation} from '@react-navigation/native';
+import {firebase} from '@react-native-firebase/firestore';
+import {getToken} from './VideoCallScreen';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
   const sampleuri2 = 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4';
   const showVideoSendComponent = true;
   const [videoUrl, setVideoUrl] = useState<string>(sampleuri1);
-
   const navigateToSettings = () => {
     navigation.navigate(ROUTE_NAME.SETTINGS_SCREEN);
   };
-
   const navigateToSendVideo = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_TRIM_SCREEN);
   };
-
   const navigateToVideoCall = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_SCREEN);
   };
-
   const navigateToFullscreenVideo = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_FULL_SCREEN, {
       videoData: {uri: videoUrl},
     });
   };
 
-  // const getToken = async () => {
-  //   const requestData = {
-  //     roomName: 'test-room',
-  //     identityName: 'murari',
-  //   };
-  //
-  //   // Define the headers
-  //   const headers = {
-  //     'Content-Type': 'application/json',
-  //   };
-  //   //http://192.168.29.244:5000/join-room
-  //   await axios
-  //     .post('http://192.168.29.244:5000/join-room', requestData, {headers})
-  //     .then((response: {data: any}) => {
-  //       console.log(JSON.stringify(response.data));
-  //       Alert.alert('ok');
-  //     })
-  //     .catch((error: any) => {
-  //       console.log(error);
-  //       Alert.alert('error', String(error));
-  //     });
-  // };
-  const requestData = {
-    roomName: 'test-room',
-    identityName: 'murari',
+  // this listener for incoming calls (move it to Navigation container level)
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc('murari')
+      .collection('watchers')
+      .doc('incoming-call');
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot((snapshot: any) => {
+      // Process the changes here
+      console.log(snapshot, '--snapshot data--');
+      if (snapshot?._data?.callStatus) {
+        console.log(snapshot?._data, '////////');
+        switch (snapshot?._data?.callStatus) {
+          case 'calling':
+            navigation.navigate('IncomingCall', {data: snapshot?._data});
+            break;
+          case 'disconnected':
+            navigation.goBack();
+            break;
+          default:
+            break;
+        }
+      }
+    });
+    return () => {
+      // Unsubscribe the listener when the component unmounts
+      unsubscribe();
+    };
+  }, []);
+
+  // this lister for my call response from friend (accepted or rejected)
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(friendUid)
+      .collection('watchers')
+      .doc('incoming-call');
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot((snapshot: any) => {
+      // Process the changes here
+      console.log(snapshot, '--snapshot data--');
+      if (snapshot?._data?.callStatus) {
+        console.log(snapshot?._data, '////////');
+        // switch (snapshot?._data?.callStatus) {
+        //   case 'calling':
+        //     navigation.navigate('CallDetail', {data: snapshot?._data});
+        //     break;
+        //   case 'disconnected':
+        //     navigation.goBack();
+        //     break;
+        //   default:
+        //     break;
+        // }
+      }
+    });
+    return () => {
+      // Unsubscribe the listener when the component unmounts
+      unsubscribe();
+    };
+  }, []);
+
+  const updateFirestore = async (status: string) => {
+    const db = firebase.firestore();
+    const updateData = {
+      callStatus: status, // Replace 'updatedStatus' with the new call status value
+    };
+    const collectionRef = db
+      .collection('users')
+      .doc('akram')
+      .collection('watchers')
+      .doc('incoming-call');
+    try {
+      await collectionRef.update(updateData);
+      console.log('Call status updated successfully!');
+    } catch (error) {
+      console.error('Error updating call status: ', error);
+    }
   };
   const Navigation = useNavigation();
+
+  const makeCallRequest = async () => {
+    const roomName = 'room';
+    const tokenForMe = await getToken(roomName, uid);
+    await putFirestore();
+    navigation.navigate('CallDetail', {
+      isCalling: true,
+      accessToken: tokenForMe,
+    });
+  };
+
+  const uid = 'murari';
+  const friendUid = 'akram';
+
+  const putFirestore = async () => {
+    // Get a reference to the Firestore database
+    const db = firebase.firestore();
+    const roomname = 'room';
+
+    const tokenForFriend = await getToken(roomname, friendUid);
+    console.log(tokenForFriend, '==tokenForFriend==');
+    // Define the data you want to add
+    const sendData = {
+      caller_uid: String(uid),
+      recipient_uid: String(friendUid),
+      callTime: new Date().getTime(),
+      callStatus: 'calling',
+      roomName: roomname,
+      tokenToJoinRoom: tokenForFriend,
+    };
+
+    // Reference to the collection
+    const collectionRef = db
+      .collection('users')
+      .doc(friendUid)
+      .collection('watchers')
+      .doc('incoming-call');
+
+    // Add data to the document within the collection
+    await collectionRef
+      .set(sendData)
+      .then(() => {
+        console.log('Data added successfully!');
+      })
+      .catch(error => {
+        console.error('Error adding data: ', error);
+      });
+  };
 
   return (
     <View style={{flex: 1}}>
@@ -88,10 +187,9 @@ const ChatScreen = ({navigation}: any) => {
             padding: 5,
             backgroundColor: presetBase.colors.grey20,
           }}
-          onPress={() => Navigation.navigate('IncomingCall', {})}>
+          onPress={() => makeCallRequest()}>
           <AntDesignIcons name={'phone-call'} size={40} color={'purple'} />
         </TouchableOpacity>
-
         <TouchableOpacity
           style={{
             borderRadius: 100,
@@ -106,7 +204,6 @@ const ChatScreen = ({navigation}: any) => {
         <ScrollView
           style={{
             padding: 10,
-
             backgroundColor: 'white',
           }}>
           <AudioMsgComponent
@@ -160,5 +257,4 @@ const ChatScreen = ({navigation}: any) => {
     </View>
   );
 };
-
 export default ChatScreen;

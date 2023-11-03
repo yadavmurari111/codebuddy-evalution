@@ -2,6 +2,7 @@ import {
   Dimensions,
   Image,
   StatusBar,
+  Text,
   StyleSheet,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -26,6 +27,10 @@ import {
 } from 'react-native-gesture-handler';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import ROUTE_NAME from '../navigation/navigation-constants';
+import {TwilioVideo} from 'react-native-twilio-video-webrtc';
+import {firebase} from '@react-native-firebase/firestore';
+import Mute from '../assets/incoming-call-assets/mute';
+import {getToken} from '../VideoCallScreen';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -37,7 +42,9 @@ const ACTION_CONTAINER_MARGIN_TOP = 10;
 const ACTION_CONTAINER_HEIGHT = 90;
 const ACTION_CONTAINER_WIDTH = width - ACTION_CONTAINER_MARGIN_TOP * 2;
 
-const CallDetails = ({navigation}) => {
+const CallDetails = ({navigation, route}) => {
+  const {isCalling, accessToken} = route.params || {};
+
   const timeRef = useRef(null);
   const animation = useSharedValue(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -86,6 +93,108 @@ const CallDetails = ({navigation}) => {
   //     }
   // })
 
+  const twilioRef = useRef(null);
+  const [status, setStatus] = useState('disconnected');
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+
+  const onRoomConnect = ({roomName, error}) => {
+    console.log('onRoomDidConnect: ', roomName);
+    console.log('[onRoomDidConnect]ERROR: ', error);
+
+    setStatus('connected');
+  };
+
+  const onRoomDisconnect = ({roomName, error}) => {
+    console.log('[Disconnect]ERROR: ', error);
+    setStatus('disconnected');
+  };
+
+  const onRoomFailToConnect = error => {
+    console.log('[FailToConnect]ERROR: ', error);
+    setStatus('disconnected');
+  };
+
+  const onEndButtonPress = async () => {
+    twilioRef.current.disconnect();
+    await updateFirestore('disconnected');
+    setStatus('disconnected');
+    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+  };
+
+  const onMuteButtonPress = isMute => {
+    console.log(isMute, '---isMute---');
+    twilioRef.current
+      .setLocalAudioEnabled(!isAudioEnabled)
+      .then(isEnabled => setIsAudioEnabled(isEnabled));
+  };
+
+  const updateFirestore = async status => {
+    const db = firebase.firestore();
+    const updateData = {
+      callStatus: status, // Replace 'updatedStatus' with the new call status value
+    };
+    const collectionRef = db
+      .collection('users')
+      .doc('akram')
+      .collection('watchers')
+      .doc('incoming-call');
+
+    try {
+      await collectionRef.update(updateData);
+      console.log('Call status updated successfully!');
+    } catch (error) {
+      console.error('Error updating call status: ', error);
+    }
+  };
+
+  const onConnectTwilio = async () => {
+    twilioRef.current.connect({
+      accessToken: accessToken,
+      enableVideo: false,
+    });
+  };
+
+  const friendUid = 'akram';
+  // connect call after accepting
+  useEffect(() => {
+    if (isCalling !== true) {
+      onConnectTwilio().then(() =>
+        console.log('you accepted call from your friend'),
+      );
+    }
+  }, []);
+
+  // this lister for my call response from friend (accepted or rejected)
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(friendUid)
+      .collection('watchers')
+      .doc('incoming-call');
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
+      // Process the changes here
+      console.log(snapshot, '--snapshot data--');
+      if (snapshot?._data?.callStatus) {
+        switch (snapshot?._data?.callStatus) {
+          case 'connected':
+            await onConnectTwilio();
+            break;
+          case 'disconnected':
+            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+            break;
+          default:
+            break;
+        }
+      }
+    });
+    return () => {
+      // Unsubscribe the listener when the component unmounts
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <AnimatedTouchableWithoutFeedback onPress={handleTapIn}>
       <View style={styles.container}>
@@ -127,7 +236,8 @@ const CallDetails = ({navigation}) => {
               justifyContent: 'center',
               alignItems: 'center',
             }}>
-            <AntDesignIcons name={'mic'} color={'black'} size={30} />
+            <Mute muteButtonHandler={onMuteButtonPress} />
+            {/*<AntDesignIcons name={'mic'} color={'black'} size={30} />*/}
           </View>
           <TouchableOpacity
             style={{
@@ -145,7 +255,7 @@ const CallDetails = ({navigation}) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => navigation.navigate(ROUTE_NAME.CHAT_SCREEN)}
+            onPress={onEndButtonPress}
             style={{
               width: 70,
               height: 70,
@@ -169,11 +279,28 @@ const CallDetails = ({navigation}) => {
           </TouchableOpacity>
         </Animated.View>
         {/* </Animated.View> */}
-        <View style={{flex: 1}}>
+        <View style={{flex: 1, justifyContent: 'center'}}>
+          {status === 'disconnected' && isCalling && (
+            <Text
+              style={{
+                textAlign: 'center',
+                fontSize: 16,
+                fontWeight: '700',
+                color: 'white',
+              }}>
+              calling akram...
+            </Text>
+          )}
           <Animated.View style={[{position: 'absolute', top: 0}]}>
             <SmallWindow animation={animation} />
           </Animated.View>
         </View>
+        <TwilioVideo
+          ref={twilioRef}
+          onRoomDidConnect={onRoomConnect}
+          onRoomDidDisconnect={onRoomDisconnect}
+          onRoomDidFailToConnect={onRoomFailToConnect}
+        />
       </View>
     </AnimatedTouchableWithoutFeedback>
   );
@@ -184,6 +311,7 @@ export default CallDetails;
 CallDetails.sharedElements = (navigation, otherNavigation, showing) => {
   return [{id: 'callContainer'}, {id: 'userImage'}];
 };
+
 const SMALL_WINDOW_WIDTH = width * 0.29;
 const SMALL_WINDOW_HEIGHT = width * 0.29 * 1.6;
 const POSITION_LEFT = 0;

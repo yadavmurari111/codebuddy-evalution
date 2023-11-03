@@ -32,7 +32,11 @@ const ACTION_CONTAINER_B_WIDTH = ACTION_CONTAINER_WIDTH - 50;
 const ACTION_BUTTON_WIDTH = ACTION_CONTAINER_WIDTH * 0.4;
 const ACTION_BUTTON_HEIGHT = 50;
 const DURATION = 2000;
-const IncomingCall = ({navigation}) => {
+const IncomingCall = ({navigation, route}) => {
+  const {
+    data: {tokenToJoinRoom},
+  } = route.params || {};
+
   const [state, setstate] = useState(true);
   const [state2, setStateAccept] = useState(true);
 
@@ -40,12 +44,15 @@ const IncomingCall = ({navigation}) => {
     // Object.keys(animationRef.current).forEach((key) => {
     //     cancelAnimation(animationRef.current[key])
     // })
+
     setstate(false);
     acceptAnimatedValue.value = withTiming(1, {duration: 500}, () => {
       translateY.value = withDelay(
         200,
         withTiming(500, {duration: 500}, () => {
-          runOnJS(navigation.navigate)('CallDetail');
+          runOnJS(navigation.navigate)('CallDetail', {
+            accessToken: tokenToJoinRoom,
+          });
         }),
       );
     });
