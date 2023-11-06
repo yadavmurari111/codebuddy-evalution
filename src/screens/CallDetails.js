@@ -95,6 +95,8 @@ const CallDetails = ({navigation, route}) => {
   // })
 
   const twilioRef = useRef(null);
+  const autoDisconnectTimeRef = useRef(null);
+
   const [status, setStatus] = useState('disconnected');
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isSpeakerMode, setIsSpeakerMode] = useState(true);
@@ -102,6 +104,8 @@ const CallDetails = ({navigation, route}) => {
   const onRoomConnect = ({roomName, error}) => {
     console.log('onRoomDidConnect: ', roomName);
     console.log('[onRoomDidConnect]ERROR: ', error);
+
+    clearTimeout(autoDisconnectTimeRef.current);
 
     setStatus('connected');
   };
@@ -175,16 +179,17 @@ const CallDetails = ({navigation, route}) => {
 
   // check call-status after 30 sec if not accepted end the call and update firestore
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      // This code will run after a delay of 30 seconds (30000 milliseconds)
-      if (status === 'disconnected') {
-        await onEndButtonPress();
-      }
-    }, 30000); // 30 seconds in milliseconds
-
+    if (isCalling) {
+      autoDisconnectTimeRef.current = setTimeout(async () => {
+        // This code will run after a delay of 30 seconds (30000 milliseconds)
+        if (status === 'disconnected') {
+          await onEndButtonPress();
+        }
+      }, 30000); // 30 seconds in milliseconds
+    }
     // Clear the timer if the component unmounts before the timer expires
     return () => {
-      clearTimeout(timer);
+      clearTimeout(autoDisconnectTimeRef.current);
     };
   }, []);
 

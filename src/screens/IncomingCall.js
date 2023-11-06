@@ -35,7 +35,7 @@ const ACTION_BUTTON_HEIGHT = 50;
 const DURATION = 2000;
 const IncomingCall = ({navigation, route}) => {
   const {
-    data: {tokenToJoinRoom, caller_uid},
+    data: {tokenToJoinRoom, recipient_uid, caller_uid},
   } = route.params || {};
 
   const [state, setstate] = useState(true);
@@ -48,7 +48,7 @@ const IncomingCall = ({navigation, route}) => {
     };
     const collectionRef = db
       .collection('users')
-      .doc(caller_uid)
+      .doc(recipient_uid)
       .collection('watchers')
       .doc('incoming-call');
     try {
@@ -78,7 +78,8 @@ const IncomingCall = ({navigation, route}) => {
       );
     });
   };
-  const onReject = () => {
+  const onReject = async () => {
+    await updateFirestore('disconnected');
     navigation.goBack();
   };
   const translateY = useSharedValue(0);
