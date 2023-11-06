@@ -71,6 +71,7 @@ const IncomingCall = ({navigation, route}) => {
         200,
         withTiming(500, {duration: 500}, () => {
           runOnJS(navigation.navigate)('CallDetail', {
+            isCalling: false,
             accessToken: tokenToJoinRoom,
           });
         }),

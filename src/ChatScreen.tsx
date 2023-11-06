@@ -7,24 +7,31 @@ import {presetBase} from './utils/color';
 import SendVideoComponent from './components/send-video/send-video.component';
 import VideoPlayerComponent from './components/video-player/video-player.component';
 import RecordAudioComponent from './components/record-audio/record-audio.component';
-import {useNavigation} from '@react-navigation/native';
 import {firebase} from '@react-native-firebase/firestore';
 import {getToken} from './VideoCallScreen';
+import {useAuth} from './AuthProvider';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
   const sampleuri2 = 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4';
   const showVideoSendComponent = true;
   const [videoUrl, setVideoUrl] = useState<string>(sampleuri1);
+
+  const {
+    user: {selfUid, friendUid},
+  } = useAuth();
+
   const navigateToSettings = () => {
     navigation.navigate(ROUTE_NAME.SETTINGS_SCREEN);
   };
   const navigateToSendVideo = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_TRIM_SCREEN);
   };
+
   const navigateToVideoCall = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_SCREEN);
   };
+
   const navigateToFullscreenVideo = () => {
     navigation.navigate(ROUTE_NAME.VIDEO_FULL_SCREEN, {
       videoData: {uri: videoUrl},
@@ -36,7 +43,7 @@ const ChatScreen = ({navigation}: any) => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc('murari')
+      .doc(selfUid)
       .collection('watchers')
       .doc('incoming-call');
     // Add a real-time listener to the root collection
@@ -50,7 +57,7 @@ const ChatScreen = ({navigation}: any) => {
             navigation.navigate('IncomingCall', {data: snapshot?._data});
             break;
           case 'disconnected':
-            navigation.goBack();
+            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
             break;
           default:
             break;
@@ -63,43 +70,9 @@ const ChatScreen = ({navigation}: any) => {
     };
   }, []);
 
-  // this lister for my call response from friend (accepted or rejected)
-  useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(friendUid)
-      .collection('watchers')
-      .doc('incoming-call');
-    // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot((snapshot: any) => {
-      // Process the changes here
-      console.log(snapshot, '--snapshot data--');
-      if (snapshot?._data?.callStatus) {
-        console.log(snapshot?._data, '////////');
-        // switch (snapshot?._data?.callStatus) {
-        //   case 'calling':
-        //     navigation.navigate('CallDetail', {data: snapshot?._data});
-        //     break;
-        //   case 'disconnected':
-        //     navigation.goBack();
-        //     break;
-        //   default:
-        //     break;
-        // }
-      }
-    });
-    return () => {
-      // Unsubscribe the listener when the component unmounts
-      unsubscribe();
-    };
-  }, []);
-
-  const Navigation = useNavigation();
-
   const makeCallRequest = async () => {
-    const roomName = 'room';
-    const tokenForMe = await getToken(roomName, uid);
+    const roomName = 'room-' + selfUid + '-' + friendUid;
+    const tokenForMe = await getToken(roomName, selfUid);
     await putFirestore();
     navigation.navigate('CallDetail', {
       isCalling: true,
@@ -107,23 +80,20 @@ const ChatScreen = ({navigation}: any) => {
     });
   };
 
-  const uid = 'murari';
-  const friendUid = 'akram';
-
   const putFirestore = async () => {
     // Get a reference to the Firestore database
     const db = firebase.firestore();
-    const roomname = 'room';
+    const roomName = 'room-' + selfUid + '-' + friendUid;
 
-    const tokenForFriend = await getToken(roomname, friendUid);
+    const tokenForFriend = await getToken(roomName, friendUid);
     console.log(tokenForFriend, '==tokenForFriend==');
     // Define the data you want to add
     const sendData = {
-      caller_uid: String(uid),
+      caller_uid: String(selfUid),
       recipient_uid: String(friendUid),
       callTime: new Date().getTime(),
       callStatus: 'calling',
-      roomName: roomname,
+      roomName: roomName,
       tokenToJoinRoom: tokenForFriend,
     };
 

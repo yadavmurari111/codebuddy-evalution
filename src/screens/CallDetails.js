@@ -30,8 +30,8 @@ import ROUTE_NAME from '../navigation/navigation-constants';
 import {TwilioVideo} from 'react-native-twilio-video-webrtc';
 import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
-import {getToken} from '../VideoCallScreen';
 import CallTimer from './callTimer';
+import {useAuth} from '../AuthProvider';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -97,6 +97,7 @@ const CallDetails = ({navigation, route}) => {
   const twilioRef = useRef(null);
   const [status, setStatus] = useState('disconnected');
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isSpeakerMode, setIsSpeakerMode] = useState(true);
 
   const onRoomConnect = ({roomName, error}) => {
     console.log('onRoomDidConnect: ', roomName);
@@ -129,6 +130,11 @@ const CallDetails = ({navigation, route}) => {
       .then(isEnabled => setIsAudioEnabled(isEnabled));
   };
 
+  const toggleSoundSetup = event => {
+    twilioRef.current.toggleSoundSetup(isSpeakerMode);
+    setIsSpeakerMode(!isSpeakerMode);
+  };
+
   const updateFirestore = async status => {
     const db = firebase.firestore();
     const updateData = {
@@ -136,7 +142,7 @@ const CallDetails = ({navigation, route}) => {
     };
     const collectionRef = db
       .collection('users')
-      .doc('akram')
+      .doc(friendUid)
       .collection('watchers')
       .doc('incoming-call');
 
@@ -148,19 +154,70 @@ const CallDetails = ({navigation, route}) => {
     }
   };
 
-  const onConnectTwilio = async () => {
+  const onConnectTwilio = () => {
     twilioRef.current.connect({
       accessToken: accessToken,
       enableVideo: false,
     });
+
+    setStatus('connected');
   };
 
-  const friendUid = 'akram';
+  const {
+    user: {selfUid, friendUid},
+  } = useAuth();
   // connect call after accepting
   useEffect(() => {
-    onConnectTwilio().then(() =>
-      console.log('you accepted call from your friend'),
-    );
+    if (!isCalling) {
+      onConnectTwilio();
+    }
+  }, []);
+
+  // check call-status after 30 sec if not accepted end the call and update firestore
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      // This code will run after a delay of 30 seconds (30000 milliseconds)
+      if (status === 'disconnected') {
+        await onEndButtonPress();
+      }
+    }, 30000); // 30 seconds in milliseconds
+
+    // Clear the timer if the component unmounts before the timer expires
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // listener for friend's actions (accepted /rejected etc)
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(friendUid)
+      .collection('watchers')
+      .doc('incoming-call');
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
+      // check if isCalling is true
+      if (snapshot?._data?.callStatus && isCalling) {
+        console.log(snapshot._data, '--snapshot data--');
+        switch (snapshot?._data?.callStatus) {
+          case 'connected':
+            await onConnectTwilio();
+            break;
+          case 'disconnected':
+            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+            break;
+          default:
+            break;
+        }
+      }
+    });
+
+    return () => {
+      // Unsubscribe the listener when the component unmounts
+      unsubscribe();
+    };
   }, []);
 
   return (
@@ -208,6 +265,7 @@ const CallDetails = ({navigation, route}) => {
             {/*<AntDesignIcons name={'mic'} color={'black'} size={30} />*/}
           </View>
           <TouchableOpacity
+            onPress={toggleSoundSetup}
             style={{
               width: 70,
               height: 70,
@@ -217,9 +275,9 @@ const CallDetails = ({navigation, route}) => {
               alignItems: 'center',
             }}>
             <AntDesignIcons
-              name={'volume-high-outline'}
-              size={30}
-              color={'black'}
+              name={isSpeakerMode ? 'volume-high' : 'volume-mute'}
+              size={40}
+              color={'grey'}
             />
           </TouchableOpacity>
           <TouchableOpacity
