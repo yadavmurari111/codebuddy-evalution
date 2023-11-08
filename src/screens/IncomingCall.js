@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import Animated, {
   FadeOut,
   interpolate,
@@ -20,6 +20,9 @@ import {SharedElement} from 'react-navigation-shared-element';
 import {useIsFocused} from '@react-navigation/native';
 import {animationRef} from '../../App';
 import {firebase} from '@react-native-firebase/firestore';
+import callRingtone from '../assets/incoming-call-assets/ringtone.mp3';
+import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
+import useSoundFromAssets from './useSoundFromAssest';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -35,7 +38,7 @@ const ACTION_BUTTON_HEIGHT = 50;
 const DURATION = 2000;
 const IncomingCall = ({navigation, route}) => {
   const {
-    data: {tokenToJoinRoom, recipient_uid, caller_uid},
+    data: {tokenToJoinRoom, recipient_uid},
   } = route.params || {};
 
   const [state, setstate] = useState(true);
@@ -45,6 +48,7 @@ const IncomingCall = ({navigation, route}) => {
     const db = firebase.firestore();
     const updateData = {
       callStatus: status, // Replace 'updatedStatus' with the new call status value
+      callConnectedTime: new Date().getTime(),
     };
     const collectionRef = db
       .collection('users')
@@ -59,10 +63,17 @@ const IncomingCall = ({navigation, route}) => {
     }
   };
 
+  const {playSound, stopSound} = useSoundFromAssets(callRingtone);
+
+  useEffect(() => {
+    playSound();
+  }, []);
+
   const onNavigate = async () => {
     // Object.keys(animationRef.current).forEach((key) => {
     //     cancelAnimation(animationRef.current[key])
     // })
+    stopSound();
     await updateFirestore('connected'); // update firestore call status for friend == connecting
 
     setstate(false);
@@ -79,8 +90,9 @@ const IncomingCall = ({navigation, route}) => {
     });
   };
   const onReject = async () => {
+    stopSound();
     await updateFirestore('disconnected');
-    navigation.goBack();
+    //navigation.goBack();
   };
   const translateY = useSharedValue(0);
 

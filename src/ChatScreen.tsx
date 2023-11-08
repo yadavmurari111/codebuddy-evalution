@@ -86,7 +86,7 @@ const ChatScreen = ({navigation}: any) => {
     const roomName = 'room-' + selfUid + '-' + friendUid;
 
     const tokenForFriend = await getToken(roomName, friendUid);
-    console.log(tokenForFriend, '==tokenForFriend==');
+    console.log(tokenForFriend, '===tokenForFriend===');
     // Define the data you want to add
     const sendData = {
       caller_uid: String(selfUid),

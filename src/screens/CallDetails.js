@@ -32,6 +32,9 @@ import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
 import CallTimer from './callTimer';
 import {useAuth} from '../AuthProvider';
+import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
+import useSoundFromAssets from './useSoundFromAssest';
+import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -96,6 +99,7 @@ const CallDetails = ({navigation, route}) => {
 
   const twilioRef = useRef(null);
   const autoDisconnectTimeRef = useRef(null);
+  const {playSound, stopSound} = useSoundFromAssets(callRingtone);
 
   const [status, setStatus] = useState('disconnected');
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
@@ -106,21 +110,23 @@ const CallDetails = ({navigation, route}) => {
     console.log('[onRoomDidConnect]ERROR: ', error);
 
     clearTimeout(autoDisconnectTimeRef.current);
-
     setStatus('connected');
   };
 
   const onRoomDisconnect = ({roomName, error}) => {
     console.log('[Disconnect]ERROR: ', error);
     setStatus('disconnected');
+    twilioRef.current.disconnect();
   };
 
   const onRoomFailToConnect = error => {
     console.log('[FailToConnect]ERROR: ', error);
     setStatus('disconnected');
+    twilioRef.current.disconnect();
   };
 
   const onEndButtonPress = async () => {
+    stopSound();
     twilioRef.current.disconnect();
     await updateFirestore('disconnected');
     setStatus('disconnected');
@@ -134,7 +140,7 @@ const CallDetails = ({navigation, route}) => {
       .then(isEnabled => setIsAudioEnabled(isEnabled));
   };
 
-  const toggleSoundSetup = event => {
+  const toggleSoundSetup = () => {
     twilioRef.current.toggleSoundSetup(isSpeakerMode);
     setIsSpeakerMode(!isSpeakerMode);
   };
@@ -143,10 +149,11 @@ const CallDetails = ({navigation, route}) => {
     const db = firebase.firestore();
     const updateData = {
       callStatus: status, // Replace 'updatedStatus' with the new call status value
+      callDisconnectedTime: new Date().getTime(),
     };
     const collectionRef = db
       .collection('users')
-      .doc(friendUid)
+      .doc(!isCalling ? selfUid : friendUid)
       .collection('watchers')
       .doc('incoming-call');
 
@@ -159,6 +166,7 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onConnectTwilio = () => {
+    stopSound();
     twilioRef.current.connect({
       accessToken: accessToken,
       enableVideo: false,
@@ -170,6 +178,7 @@ const CallDetails = ({navigation, route}) => {
   const {
     user: {selfUid, friendUid},
   } = useAuth();
+
   // connect call after accepting
   useEffect(() => {
     if (!isCalling) {
@@ -180,6 +189,7 @@ const CallDetails = ({navigation, route}) => {
   // check call-status after 30 sec if not accepted end the call and update firestore
   useEffect(() => {
     if (isCalling) {
+      playSound();
       autoDisconnectTimeRef.current = setTimeout(async () => {
         // This code will run after a delay of 30 seconds (30000 milliseconds)
         if (status === 'disconnected') {
@@ -193,8 +203,12 @@ const CallDetails = ({navigation, route}) => {
     };
   }, []);
 
-  // listener for friend's actions (accepted /rejected etc)
+  // listener for friend's/recipient's actions (accepted /rejected etc)
   useEffect(() => {
+    if (isCalling === false) {
+      return;
+    }
+
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
@@ -205,13 +219,14 @@ const CallDetails = ({navigation, route}) => {
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
       // check if isCalling is true
       if (snapshot?._data?.callStatus && isCalling) {
+        // check if isCalling is true
         console.log(snapshot._data, '--snapshot data--');
         switch (snapshot?._data?.callStatus) {
           case 'connected':
             await onConnectTwilio();
             break;
           case 'disconnected':
-            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+            await onEndButtonPress();
             break;
           default:
             break;
@@ -275,14 +290,14 @@ const CallDetails = ({navigation, route}) => {
               width: 70,
               height: 70,
               borderRadius: 50,
-              backgroundColor: '#eee',
+              backgroundColor: !isSpeakerMode ? '#eee' : 'grey',
               justifyContent: 'center',
               alignItems: 'center',
             }}>
             <AntDesignIcons
-              name={isSpeakerMode ? 'volume-high' : 'volume-mute'}
               size={40}
-              color={'grey'}
+              name="volume-high"
+              color={!isSpeakerMode ? 'grey' : 'lightgrey'}
             />
           </TouchableOpacity>
           <TouchableOpacity

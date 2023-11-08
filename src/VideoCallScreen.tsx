@@ -14,12 +14,14 @@ import {
   View,
 } from 'react-native';
 import {presetBase} from './utils/color';
+import call from '../src/assets/incoming-call-assets/ringtone.mp3';
 
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import {firebase} from '@react-native-firebase/firestore';
 import {useAuth} from './AuthProvider';
+import Sound from 'react-native-sound';
 
 export const getToken = async (roomName: string, identityName: string) => {
   const requestData = {roomName, identityName};
@@ -189,6 +191,41 @@ const VideoCallScreen: FunctionComponent<
 
     setStatus('connecting');
   };
+  const onPlaySound = async () => {
+    setTimeout(() => {
+      const sound = new Sound(call, '', error => {
+        console.log('error: ', error);
+      });
+
+      setTimeout(() => {
+        sound.play();
+      }, 1000);
+    }, 1000);
+  };
+
+  const soundInstance = useRef(null);
+
+  const playSound = () => {
+    if (soundInstance.current) {
+      return;
+    }
+    // Create a new Sound instance and play it
+    setTimeout(() => {
+      soundInstance.current = new Sound(call, '', error => {
+        console.log('error: ', error);
+      });
+
+      setTimeout(() => {
+        soundInstance.current.play();
+      }, 1000);
+    }, 1000);
+  };
+
+  const stopSound = () => {
+    console.log('pause=========================');
+    soundInstance.current.pause();
+    soundInstance.current.stop();
+  };
 
   // Substitute your Twilio AccountSid and API Key details
   const ACCOUNT_SID = 'ACaae70ff76447aa3604d8838c9ca6016a';
@@ -284,6 +321,8 @@ const VideoCallScreen: FunctionComponent<
           <Text style={{paddingBottom: 30}}>{status}</Text>
 
           <Button title="Connect" onPress={onConnectButtonPress} />
+          <Button title="play" onPress={playSound} />
+          <Button title="pause" onPress={stopSound} />
         </View>
       )}
 
