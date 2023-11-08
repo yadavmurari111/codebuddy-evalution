@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import Animated, {
   FadeOut,
   interpolate,
@@ -20,14 +20,12 @@ import {SharedElement} from 'react-navigation-shared-element';
 import {useIsFocused} from '@react-navigation/native';
 import {animationRef} from '../../App';
 import {firebase} from '@react-native-firebase/firestore';
+import Sound from 'react-native-sound';
 import callRingtone from '../assets/incoming-call-assets/ringtone.mp3';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
-import useSoundFromAssets from './useSoundFromAssest';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
-
 const {width, height} = Dimensions.get('window');
-
 const CONTAINER_HEIGHT = height * 0.65;
 const CONTAINER_WIDTH = width;
 const IMAGE_SIZE = CONTAINER_WIDTH * 0.5;
@@ -36,6 +34,23 @@ const ACTION_CONTAINER_B_WIDTH = ACTION_CONTAINER_WIDTH - 50;
 const ACTION_BUTTON_WIDTH = ACTION_CONTAINER_WIDTH * 0.4;
 const ACTION_BUTTON_HEIGHT = 50;
 const DURATION = 2000;
+
+const CallHangup = new Sound(callHangup);
+const CallRingtone = new Sound(callRingtone);
+
+const callEndPlay = () => {
+  CallHangup.play(success => console.log(success));
+};
+
+const callRingtonePlay = () => {
+  console.log('callRingtonePlay!');
+  CallRingtone.play(success => console.log(success));
+};
+
+const callRingtoneStop = () => {
+  CallRingtone.stop(success => console.log(success));
+};
+
 const IncomingCall = ({navigation, route}) => {
   const {
     data: {tokenToJoinRoom, recipient_uid},
@@ -63,17 +78,15 @@ const IncomingCall = ({navigation, route}) => {
     }
   };
 
-  const {playSound, stopSound} = useSoundFromAssets(callRingtone);
-
   useEffect(() => {
-    playSound();
+    callRingtonePlay();
   }, []);
 
   const onNavigate = async () => {
     // Object.keys(animationRef.current).forEach((key) => {
     //     cancelAnimation(animationRef.current[key])
     // })
-    stopSound();
+    callRingtoneStop();
     await updateFirestore('connected'); // update firestore call status for friend == connecting
 
     setstate(false);
@@ -90,7 +103,8 @@ const IncomingCall = ({navigation, route}) => {
     });
   };
   const onReject = async () => {
-    stopSound();
+    callRingtoneStop();
+    callEndPlay();
     await updateFirestore('disconnected');
     //navigation.goBack();
   };
@@ -103,6 +117,13 @@ const IncomingCall = ({navigation, route}) => {
   });
 
   const focused = useIsFocused();
+
+  // run at the time of unmounting
+  useEffect(() => {
+    return () => {
+      onReject().then(() => console.log('user dismissed call!')); // when user swipe down incoming screen trigger this
+    };
+  }, []);
 
   useEffect(() => {
     if (focused) {

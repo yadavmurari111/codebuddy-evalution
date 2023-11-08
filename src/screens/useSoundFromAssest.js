@@ -8,9 +8,10 @@ const useSoundFromAssets = filepath => {
     if (soundInstance.current !== null) {
       return;
     }
-    console.log('----play sound----');
-    // Create a new Sound instance and play it
+    console.log('--play sound--');
+
     setTimeout(() => {
+      // Create a new Sound instance and play it
       soundInstance.current = new Sound(filepath, '', error => {
         console.log('error while playing sound: ', error);
       });
@@ -25,7 +26,9 @@ const useSoundFromAssets = filepath => {
   const stopSound = () => {
     console.log('stop sound!');
     // soundInstance.current.pause();
-    soundInstance.current.stop();
+    if (soundInstance.current !== null) {
+      soundInstance.current.stop();
+    }
   };
   return {playSound, stopSound};
 };

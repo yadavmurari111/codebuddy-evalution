@@ -32,9 +32,26 @@ import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
 import CallTimer from './callTimer';
 import {useAuth} from '../AuthProvider';
-import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import useSoundFromAssets from './useSoundFromAssest';
+import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
+import Sound from 'react-native-sound';
+
+const CallHangup = new Sound(callHangup);
+const CallRingtone = new Sound(callRingtone);
+
+const callEndPlay = () => {
+  CallHangup.play(success => console.log(success));
+};
+
+const callRingtonePlay = () => {
+  console.log('callRingtonePlay!');
+  CallRingtone.play(success => console.log(success));
+};
+
+const callRingtoneStop = () => {
+  CallRingtone.stop(success => console.log(success));
+};
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -126,7 +143,9 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onEndButtonPress = async () => {
-    stopSound();
+    callRingtoneStop();
+    callEndPlay();
+
     twilioRef.current.disconnect();
     await updateFirestore('disconnected');
     setStatus('disconnected');
@@ -145,10 +164,10 @@ const CallDetails = ({navigation, route}) => {
     setIsSpeakerMode(!isSpeakerMode);
   };
 
-  const updateFirestore = async status => {
+  const updateFirestore = async callStatus => {
     const db = firebase.firestore();
     const updateData = {
-      callStatus: status, // Replace 'updatedStatus' with the new call status value
+      callStatus: callStatus, // Replace 'updatedStatus' with the new call status value
       callDisconnectedTime: new Date().getTime(),
     };
     const collectionRef = db
@@ -166,7 +185,6 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onConnectTwilio = () => {
-    stopSound();
     twilioRef.current.connect({
       accessToken: accessToken,
       enableVideo: false,
@@ -189,7 +207,7 @@ const CallDetails = ({navigation, route}) => {
   // check call-status after 30 sec if not accepted end the call and update firestore
   useEffect(() => {
     if (isCalling) {
-      playSound();
+      callRingtonePlay();
       autoDisconnectTimeRef.current = setTimeout(async () => {
         // This code will run after a delay of 30 seconds (30000 milliseconds)
         if (status === 'disconnected') {
@@ -220,13 +238,14 @@ const CallDetails = ({navigation, route}) => {
       // check if isCalling is true
       if (snapshot?._data?.callStatus && isCalling) {
         // check if isCalling is true
-        console.log(snapshot._data, '--snapshot data--');
+        console.log(snapshot._data, '--snapshot data in "callDetails"--');
         switch (snapshot?._data?.callStatus) {
           case 'connected':
+            callRingtoneStop();
             await onConnectTwilio();
             break;
           case 'disconnected':
-            await onEndButtonPress();
+            // await onEndButtonPress();
             break;
           default:
             break;
