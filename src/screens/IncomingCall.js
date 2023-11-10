@@ -23,6 +23,7 @@ import {firebase} from '@react-native-firebase/firestore';
 import Sound from 'react-native-sound';
 import callRingtone from '../assets/incoming-call-assets/ringtone.mp3';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
+import ROUTE_NAME from '../navigation/navigation-constants';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
 const {width, height} = Dimensions.get('window');
@@ -94,7 +95,7 @@ const IncomingCall = ({navigation, route}) => {
       translateY.value = withDelay(
         200,
         withTiming(500, {duration: 500}, () => {
-          runOnJS(navigation.navigate)('CallDetail', {
+          runOnJS(navigation.navigate)(ROUTE_NAME.VIDEO_CALL_DETAIL, {
             isCalling: false,
             accessToken: tokenToJoinRoom,
           });

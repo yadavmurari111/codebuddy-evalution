@@ -1,9 +1,9 @@
 import {
-  Alert,
   Dimensions,
   Image,
   StatusBar,
   StyleSheet,
+  Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -27,30 +27,11 @@ import {
 } from 'react-native-gesture-handler';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import ROUTE_NAME from '../navigation/navigation-constants';
-import {TwilioVideo} from 'react-native-twilio-video-webrtc';
 import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
-import CallTimer from './callTimer';
 import {useAuth} from '../AuthProvider';
-import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
-import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
-import Sound from 'react-native-sound';
-
-const CallHangup = new Sound(callHangup);
-const CallRingtone = new Sound(callRingtone);
-
-export const callEndPlay = () => {
-  CallHangup.play(success => console.log(success));
-};
-
-export const callRingtonePlay = () => {
-  console.log('callRingtonePlay!');
-  CallRingtone.play(success => console.log(success));
-};
-
-export const callRingtoneStop = () => {
-  CallRingtone.stop(success => console.log(success));
-};
+import {getToken} from '../VideoCallScreen';
+import {callEndPlay, callRingtonePlay, callRingtoneStop} from './CallDetails';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -61,8 +42,11 @@ const ACTION_CONTAINER_MARGIN_TOP = 10;
 const ACTION_CONTAINER_HEIGHT = 90;
 const ACTION_CONTAINER_WIDTH = width - ACTION_CONTAINER_MARGIN_TOP * 2;
 
-const CallDetails = ({navigation, route}) => {
-  const {isCalling, accessToken} = route.params || {};
+const CallOutGoing = ({navigation, route}) => {
+  const {
+    user: {selfUid, friendUid},
+  } = useAuth();
+
   const animation = useSharedValue(0);
   const animatedStyleTop = useAnimatedStyle(() => {
     return {
@@ -71,7 +55,6 @@ const CallDetails = ({navigation, route}) => {
         [0, 1],
         [ACTION_CONTAINER_MARGIN_TOP, -ACTION_CONTAINER_HEIGHT],
       ),
-      // transform: [{ translateY: interpolate(animation.value, [0, 1], [0, -translateValue]) }]
     };
   });
 
@@ -93,61 +76,23 @@ const CallDetails = ({navigation, route}) => {
 
   const handleTapIn = () => {
     'worklet';
-    // /   animate(0, 0)
     animate(Number(!animation.value), 0);
   };
-  const handleTapOut = () => {
-    'worklet';
-    animate(1, 5000);
+
+  const makeCallRequest = async () => {
+    console.log('call accepted by friend!');
+    setStatus('connected');
+    callRingtoneStop();
+
+    const roomName = 'room-' + selfUid + '-' + friendUid;
+    const tokenForMe = await getToken(roomName, selfUid);
+    navigation.navigate(ROUTE_NAME.VIDEO_CALL_DETAIL, {
+      isCalling: true,
+      accessToken: tokenForMe,
+    });
   };
-
-  const {
-    user: {selfUid, friendUid},
-  } = useAuth();
-
-  const twilioRef = useRef(null);
 
   const [status, setStatus] = useState('disconnected');
-  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-  const [isSpeakerMode, setIsSpeakerMode] = useState(true);
-
-  const onRoomConnect = ({roomName, error}) => {
-    console.log('onRoomDidConnect: ', roomName);
-    console.log('[onRoomDidConnect]ERROR: ', error);
-    Alert.alert('room connected');
-
-    setStatus('connected');
-  };
-
-  const onRoomDisconnect = ({roomName, error}) => {
-    console.log('[ Disconnect ] -', roomName);
-  };
-
-  const onRoomFailToConnect = error => {
-    console.log('[FailToConnect]ERROR: ', error);
-  };
-
-  const onEndButtonPress = async () => {
-    callRingtoneStop();
-    callEndPlay();
-
-    twilioRef.current.disconnect();
-    await updateFirestore('disconnected');
-    setStatus('disconnected');
-    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
-  };
-
-  const onMuteButtonPress = isMute => {
-    console.log(isMute, '---isMute---');
-    twilioRef.current
-      .setLocalAudioEnabled(!isAudioEnabled)
-      .then(isEnabled => setIsAudioEnabled(isEnabled));
-  };
-
-  const toggleSoundSetup = () => {
-    twilioRef.current.toggleSoundSetup(isSpeakerMode);
-    setIsSpeakerMode(!isSpeakerMode);
-  };
 
   const updateFirestore = async callStatus => {
     const db = firebase.firestore();
@@ -157,7 +102,7 @@ const CallDetails = ({navigation, route}) => {
     };
     const collectionRef = db
       .collection('users')
-      .doc(!isCalling ? selfUid : friendUid)
+      .doc(friendUid)
       .collection('watchers')
       .doc('incoming-call');
 
@@ -169,49 +114,57 @@ const CallDetails = ({navigation, route}) => {
     }
   };
 
-  const onConnectTwilio = token => {
-    twilioRef.current.connect({
-      accessToken: token,
-      enableVideo: false,
-    });
-    Alert.alert('' + token);
-    setStatus('connected');
-  };
-
-  // connect call to Twilio room
-  useEffect(() => {
-    onConnectTwilio(accessToken);
-  }, [accessToken]);
-
-  // At the time of unmounting the component end call
-  useEffect(() => {
-    return () => {
-      // onEndButtonPress().then(() => console.log('call ended'));
-    };
-  }, []);
-
-  // this listener is for "call disconnected" by friend
+  // listener for friend's/recipient's actions (accepted /rejected etc)
   useEffect(() => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc(selfUid)
+      .doc(friendUid)
       .collection('watchers')
       .doc('incoming-call');
+
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-      // Process the changes here
-      console.log(snapshot, '--snapshot data--');
       if (snapshot?._data?.callStatus) {
         switch (snapshot?._data?.callStatus) {
+          case 'connected':
+            await makeCallRequest();
+            break;
           case 'disconnected':
-            // await onEndButtonPress();
+            await onEndButtonPress();
             break;
         }
       }
     });
+
     return () => {
       unsubscribe(); // Unsubscribe the listener when the component unmounts
+    };
+  }, [friendUid]);
+
+  const onEndButtonPress = async () => {
+    callRingtoneStop();
+    callEndPlay();
+    clearTimeout(autoDisconnectTimeRef.current); // Clear the timer if the component unmounts before the timer expires
+
+    await updateFirestore('disconnected');
+    setStatus('disconnected');
+    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+  };
+
+  const autoDisconnectTimeRef = useRef(null);
+
+  useEffect(() => {
+    callRingtonePlay();
+    autoDisconnectTimeRef.current = setTimeout(async () => {
+      if (status === 'disconnected') {
+        // await onEndButtonPress(); // This code will run after a delay of 30 seconds (30000 milliseconds)
+      }
+    }, 30000); // 30 seconds in milliseconds
+
+    return () => {
+      clearTimeout(autoDisconnectTimeRef.current); // Clear the timer if the component unmounts before the timer expires
+      callRingtoneStop();
     };
   }, []);
 
@@ -228,7 +181,6 @@ const CallDetails = ({navigation, route}) => {
             resizeMode="stretch"
           />
         </SharedElement>
-        {/* <Animated.View style={[animatedStyleHeight]} > */}
         <Animated.View
           style={[
             {
@@ -256,24 +208,19 @@ const CallDetails = ({navigation, route}) => {
               justifyContent: 'center',
               alignItems: 'center',
             }}>
-            <Mute muteButtonHandler={onMuteButtonPress} />
+            <Mute muteButtonHandler={() => {}} />
             {/*<AntDesignIcons name={'mic'} color={'black'} size={30} />*/}
           </View>
           <TouchableOpacity
-            // onPress={toggleSoundSetup}
             style={{
               width: 70,
               height: 70,
               borderRadius: 50,
-              backgroundColor: !isSpeakerMode ? '#eee' : 'grey',
+              backgroundColor: 'grey',
               justifyContent: 'center',
               alignItems: 'center',
             }}>
-            <AntDesignIcons
-              size={40}
-              name="volume-high"
-              color={!isSpeakerMode ? 'grey' : 'lightgrey'}
-            />
+            <AntDesignIcons size={40} name="volume-high" color={'lightgrey'} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onEndButtonPress}
@@ -299,27 +246,30 @@ const CallDetails = ({navigation, route}) => {
             />
           </TouchableOpacity>
         </Animated.View>
+
         <View style={{flex: 1, justifyContent: 'center'}}>
-          {status === 'connected' && <CallTimer />}
+          <Text
+            style={{
+              textAlign: 'center',
+              fontSize: 16,
+              fontWeight: '700',
+              color: 'white',
+            }}>
+            {'Calling ' + friendUid + ' ...'}
+          </Text>
 
           <Animated.View style={[{position: 'absolute', top: 0}]}>
             <SmallWindow animation={animation} />
           </Animated.View>
         </View>
-        <TwilioVideo
-          ref={twilioRef}
-          onRoomDidConnect={onRoomConnect}
-          onRoomDidDisconnect={onRoomDisconnect}
-          onRoomDidFailToConnect={onRoomFailToConnect}
-        />
       </View>
     </AnimatedTouchableWithoutFeedback>
   );
 };
 
-export default CallDetails;
+export default CallOutGoing;
 
-CallDetails.sharedElements = (navigation, otherNavigation, showing) => {
+CallOutGoing.sharedElements = (navigation, otherNavigation, showing) => {
   return [{id: 'callContainer'}, {id: 'userImage'}];
 };
 

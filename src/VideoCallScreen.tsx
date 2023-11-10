@@ -26,6 +26,10 @@ import Sound from 'react-native-sound';
 export const getToken = async (roomName: string, identityName: string) => {
   const requestData = {roomName, identityName};
 
+  // const {
+  //   user: {selfUid, friendUid},
+  // } = useAuth();
+
   const headers = {'Content-Type': 'application/json'};
 
   //http://192.168.29.244:5000/join-room
@@ -179,7 +183,7 @@ const VideoCallScreen: FunctionComponent<
     }
   };
   const onConnectButtonPress = async () => {
-    await putFirestore();
+    // await putFirestore();
     const roomname = 'room';
 
     const tokenForFriend = await getToken(roomname, uid);
@@ -190,41 +194,6 @@ const VideoCallScreen: FunctionComponent<
     });
 
     setStatus('connecting');
-  };
-  const onPlaySound = async () => {
-    setTimeout(() => {
-      const sound = new Sound(call, '', error => {
-        console.log('error: ', error);
-      });
-
-      setTimeout(() => {
-        sound.play();
-      }, 1000);
-    }, 1000);
-  };
-
-  const soundInstance = useRef(null);
-
-  const playSound = () => {
-    if (soundInstance.current) {
-      return;
-    }
-    // Create a new Sound instance and play it
-    setTimeout(() => {
-      soundInstance.current = new Sound(call, '', error => {
-        console.log('error: ', error);
-      });
-
-      setTimeout(() => {
-        soundInstance.current.play();
-      }, 1000);
-    }, 1000);
-  };
-
-  const stopSound = () => {
-    console.log('pause=========================');
-    soundInstance.current.pause();
-    soundInstance.current.stop();
   };
 
   // Substitute your Twilio AccountSid and API Key details
@@ -258,7 +227,7 @@ const VideoCallScreen: FunctionComponent<
 
   const onEndButtonPress = () => {
     twilioRef.current.disconnect();
-    updateFirestore('disconnected');
+    // updateFirestore('disconnected');
     setStatus('disconnected');
   };
 
@@ -274,7 +243,7 @@ const VideoCallScreen: FunctionComponent<
 
   const onRoomConnect = ({roomName, error}) => {
     console.log('onRoomDidConnect: ', roomName);
-
+    Alert.alert('room connected');
     setStatus('connected');
   };
 
@@ -321,8 +290,6 @@ const VideoCallScreen: FunctionComponent<
           <Text style={{paddingBottom: 30}}>{status}</Text>
 
           <Button title="Connect" onPress={onConnectButtonPress} />
-          <Button title="play" onPress={playSound} />
-          <Button title="pause" onPress={stopSound} />
         </View>
       )}
 

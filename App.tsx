@@ -13,7 +13,8 @@ import ChatExportToPDF from './src/ChatToPdfScreen';
 import SendVideoComponent from './src/components/send-video/send-video.component';
 import FullscreenVideoPlayer from './src/components/video-player/fullscreen-video-player.component';
 import VideoCallScreen from './src/VideoCallScreen';
-// enableScreens(true);
+import CallOutGoing from './src/screens/CallOutgoing';
+enableScreens(true);
 export const animationRef = createRef({});
 animationRef.current = {};
 
@@ -40,7 +41,7 @@ export const SharedStack = () => {
       <SharedScreen name={ROUTE_NAME.CHAT_SCREEN} component={ChatScreen} />
 
       <SharedScreen
-        name="IncomingCall"
+        name={ROUTE_NAME.VIDEO_CALL_INCOMING}
         component={IncomingCall}
         options={{
           headerShown: false,
@@ -58,7 +59,7 @@ export const SharedStack = () => {
         }}
       />
       <SharedScreen
-        name="CallDetail"
+        name={ROUTE_NAME.VIDEO_CALL_DETAIL}
         options={{
           ...cardInterpolator,
           transitionSpec: {
@@ -86,6 +87,11 @@ export const SharedStack = () => {
         name={ROUTE_NAME.VIDEO_CALL_SCREEN}
         component={VideoCallScreen}
         options={{headerShown: true, title: ''}}
+      />
+      <SharedScreen
+        name={ROUTE_NAME.VIDEO_CALL_OUTGOING}
+        component={CallOutGoing}
+        options={{headerShown: false, title: ''}}
       />
     </SharedNavigator>
   );

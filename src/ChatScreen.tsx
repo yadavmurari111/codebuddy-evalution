@@ -71,13 +71,8 @@ const ChatScreen = ({navigation}: any) => {
   }, []);
 
   const makeCallRequest = async () => {
-    const roomName = 'room-' + selfUid + '-' + friendUid;
-    const tokenForMe = await getToken(roomName, selfUid);
     await putFirestore();
-    navigation.navigate('CallDetail', {
-      isCalling: true,
-      accessToken: tokenForMe,
-    });
+    navigation.navigate(ROUTE_NAME.VIDEO_CALL_OUTGOING);
   };
 
   const putFirestore = async () => {
