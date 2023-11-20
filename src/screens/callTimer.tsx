@@ -16,8 +16,10 @@ const ElapsedTimeInSeconds = ({startTimestamp}: any) => {
   }, [startTimestamp]);
 
   return (
-    <View>
-      <Text>{formatTime(elapsedTime)}</Text>
+    <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+      <Text style={{color: 'white', fontSize: 16, fontWeight: '700'}}>
+        {formatTime(elapsedTime)}
+      </Text>
     </View>
   );
 };

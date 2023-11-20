@@ -144,7 +144,7 @@ const CallDetails = ({navigation, route}) => {
       .setLocalAudioEnabled(!isAudioEnabled)
       .then(async isEnabled => {
         setIsAudioEnabled(isEnabled);
-        await updateMuteStatusToFirestore(isEnabled);
+        await updateMuteStatusToFirestore(!isEnabled);
       });
   };
 
@@ -179,7 +179,7 @@ const CallDetails = ({navigation, route}) => {
       isCallerMute: muteStatus,
     };
     const updateRecipientMuteData = {
-      isCallerMute: muteStatus,
+      isRecipientMute: muteStatus,
     };
     const updateData = isCalling
       ? updateCallerMuteData
@@ -203,14 +203,14 @@ const CallDetails = ({navigation, route}) => {
       accessToken: token,
       enableVideo: false,
     });
-    Alert.alert('' + token);
+    // Alert.alert('' + token);
     setStatus('connected');
   };
 
   // connect call to Twilio room
   useEffect(() => {
     onConnectTwilio(accessToken);
-  }, [accessToken]);
+  }, []);
 
   // At the time of unmounting the component end call
   useEffect(() => {
@@ -219,7 +219,8 @@ const CallDetails = ({navigation, route}) => {
     };
   }, []);
 
-  const callTimer = useRef(null);
+  const [isFriendMute, setIsFriendMute] = useState(false);
+  const [callTimer, setCallTimer] = useState(null);
   // this listener is for "call disconnected" by friend
   useEffect(() => {
     const db = firebase.firestore();
@@ -232,14 +233,21 @@ const CallDetails = ({navigation, route}) => {
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
       // Process the changes here
       console.log(snapshot, '--snapshot data-- in detail screen');
-      callTimer.current = snapshot._data.callConnectedTime;
+
       if (snapshot?._data?.callStatus) {
         switch (snapshot?._data?.callStatus) {
           case 'disconnected':
-            // await onEndButtonPress();
+            //s await onEndButtonPress();
             break;
         }
       }
+      setCallTimer(snapshot._data.callConnectedTime);
+
+      setIsFriendMute(
+        !isCalling
+          ? snapshot._data.isCallerMute
+          : snapshot._data.isRecipientMute,
+      );
     });
     return () => {
       unsubscribe(); // Unsubscribe the listener when the component unmounts
@@ -331,12 +339,12 @@ const CallDetails = ({navigation, route}) => {
           </TouchableOpacity>
         </Animated.View>
         <View style={{flex: 1, justifyContent: 'center'}}>
-          {callTimer.current !== null && (
-            <ElapsedTimeInSeconds startTimestamp={callTimer.current} />
+          {callTimer !== null && (
+            <ElapsedTimeInSeconds startTimestamp={callTimer} />
           )}
 
           <Animated.View style={[{position: 'absolute', top: 0}]}>
-            <SmallWindow animation={animation} />
+            <SmallWindow animation={animation} isFriendMute={isFriendMute} />
           </Animated.View>
         </View>
         <TwilioVideo
@@ -368,7 +376,7 @@ const POSITION_BOTTOM =
   StatusBar.currentHeight;
 const POSITION_TOP = 0;
 
-const SmallWindow = ({animation}) => {
+const SmallWindow = ({animation, isFriendMute}) => {
   const x = useSharedValue(0);
   const y = useSharedValue(0);
   const positionY = useSharedValue('bottom');
@@ -485,7 +493,6 @@ const SmallWindow = ({animation}) => {
         <Animated.View
           entering={FadeIn.delay(500)}
           style={[styles.smallWindow, animatedStyle]}>
-          <AntDesignIcons name={'mic'} color={'grey'} size={12} />
           <Image
             source={require('../../src/assets/incoming-call-assets/test_avatar.png')}
             style={{
@@ -495,6 +502,12 @@ const SmallWindow = ({animation}) => {
               borderColor: '#000',
               borderRadius: 100,
             }}
+          />
+          <AntDesignIcons
+            style={{marginTop: 2}}
+            name={isFriendMute ? 'mic-off' : 'mic'}
+            color={'black'}
+            size={18}
           />
         </Animated.View>
       </PanGestureHandler>
