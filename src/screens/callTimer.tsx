@@ -1,43 +1,25 @@
 import React, {useState, useEffect} from 'react';
-import {Text, View, StyleSheet} from 'react-native';
+import {View, Text} from 'react-native';
+import {formatTime} from '../utils/utils';
 
-const CallTimer = () => {
-  const [seconds, setSeconds] = useState(0);
-  const [minutes, setMinutes] = useState(0);
+const ElapsedTimeInSeconds = ({startTimestamp}: any) => {
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setSeconds(prevSeconds => {
-        if (prevSeconds === 59) {
-          setMinutes(prevMinutes => prevMinutes + 1);
-          return 0;
-        } else {
-          return prevSeconds + 1;
-        }
-      });
+      const currentTimestamp = Math.floor(Date.now() / 1000); // Current time in seconds
+      const elapsed = currentTimestamp - Math.floor(startTimestamp / 1000);
+      setElapsedTime(elapsed);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [startTimestamp]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.timerText}>
-        {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-      </Text>
+    <View>
+      <Text>{formatTime(elapsedTime)}</Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timerText: {
-    fontSize: 24,
-    color: 'white',
-  },
-});
-
-export default CallTimer;
+export default ElapsedTimeInSeconds;

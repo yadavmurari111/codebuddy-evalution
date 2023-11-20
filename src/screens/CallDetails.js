@@ -35,6 +35,7 @@ import {useAuth} from '../AuthProvider';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
 import Sound from 'react-native-sound';
+import ElapsedTimeInSeconds from './callTimer';
 
 const CallHangup = new Sound(callHangup);
 const CallRingtone = new Sound(callRingtone);
@@ -141,12 +142,15 @@ const CallDetails = ({navigation, route}) => {
     console.log(isMute, '---isMute---');
     twilioRef.current
       .setLocalAudioEnabled(!isAudioEnabled)
-      .then(isEnabled => setIsAudioEnabled(isEnabled));
+      .then(async isEnabled => {
+        setIsAudioEnabled(isEnabled);
+        await updateMuteStatusToFirestore(isEnabled);
+      });
   };
 
   const toggleSoundSetup = () => {
-    twilioRef.current.toggleSoundSetup(isSpeakerMode);
     setIsSpeakerMode(!isSpeakerMode);
+    twilioRef.current.toggleSoundSetup(isSpeakerMode);
   };
 
   const updateFirestore = async callStatus => {
@@ -169,6 +173,31 @@ const CallDetails = ({navigation, route}) => {
     }
   };
 
+  const updateMuteStatusToFirestore = async muteStatus => {
+    const db = firebase.firestore();
+    const updateCallerMuteData = {
+      isCallerMute: muteStatus,
+    };
+    const updateRecipientMuteData = {
+      isCallerMute: muteStatus,
+    };
+    const updateData = isCalling
+      ? updateCallerMuteData
+      : updateRecipientMuteData;
+    const collectionRef = db
+      .collection('users')
+      .doc(!isCalling ? selfUid : friendUid)
+      .collection('watchers')
+      .doc('incoming-call');
+
+    try {
+      await collectionRef.update(updateData);
+      console.log('Call Mute status updated successfully!');
+    } catch (error) {
+      console.error('Error updating call status: ', error);
+    }
+  };
+
   const onConnectTwilio = token => {
     twilioRef.current.connect({
       accessToken: token,
@@ -186,22 +215,24 @@ const CallDetails = ({navigation, route}) => {
   // At the time of unmounting the component end call
   useEffect(() => {
     return () => {
-      // onEndButtonPress().then(() => console.log('call ended'));
+      onEndButtonPress().then(() => console.log('call ended'));
     };
   }, []);
 
+  const callTimer = useRef(null);
   // this listener is for "call disconnected" by friend
   useEffect(() => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc(selfUid)
+      .doc(isCalling ? friendUid : selfUid)
       .collection('watchers')
       .doc('incoming-call');
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
       // Process the changes here
-      console.log(snapshot, '--snapshot data--');
+      console.log(snapshot, '--snapshot data-- in detail screen');
+      callTimer.current = snapshot._data.callConnectedTime;
       if (snapshot?._data?.callStatus) {
         switch (snapshot?._data?.callStatus) {
           case 'disconnected':
@@ -260,7 +291,7 @@ const CallDetails = ({navigation, route}) => {
             {/*<AntDesignIcons name={'mic'} color={'black'} size={30} />*/}
           </View>
           <TouchableOpacity
-            // onPress={toggleSoundSetup}
+            onPress={toggleSoundSetup}
             style={{
               width: 70,
               height: 70,
@@ -300,7 +331,9 @@ const CallDetails = ({navigation, route}) => {
           </TouchableOpacity>
         </Animated.View>
         <View style={{flex: 1, justifyContent: 'center'}}>
-          {status === 'connected' && <CallTimer />}
+          {callTimer.current !== null && (
+            <ElapsedTimeInSeconds startTimestamp={callTimer.current} />
+          )}
 
           <Animated.View style={[{position: 'absolute', top: 0}]}>
             <SmallWindow animation={animation} />
@@ -452,8 +485,8 @@ const SmallWindow = ({animation}) => {
         <Animated.View
           entering={FadeIn.delay(500)}
           style={[styles.smallWindow, animatedStyle]}>
+          <AntDesignIcons name={'mic'} color={'grey'} size={12} />
           <Image
-            //source={require('../../assets/test_avatar.png')}
             source={require('../../src/assets/incoming-call-assets/test_avatar.png')}
             style={{
               width: SMALL_WINDOW_WIDTH * 0.5,
