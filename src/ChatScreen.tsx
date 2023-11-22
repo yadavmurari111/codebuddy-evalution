@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {ScrollView, TouchableOpacity, View} from 'react-native';
+import {Alert, ScrollView, TouchableOpacity, View} from 'react-native';
 import AntDesignIcons from 'react-native-vector-icons/Feather';
 import ROUTE_NAME from './navigation/navigation-constants';
 import AudioMsgComponent from './components/audio-msg/audio-msg.component';
@@ -8,8 +8,11 @@ import SendVideoComponent from './components/send-video/send-video.component';
 import VideoPlayerComponent from './components/video-player/video-player.component';
 import RecordAudioComponent from './components/record-audio/record-audio.component';
 import {firebase} from '@react-native-firebase/firestore';
-import {getToken} from './VideoCallScreen';
 import {useAuth} from './AuthProvider';
+import {
+  deleteFirestoreCallData,
+  putCallDataFirestore,
+} from './screens/callFunctions';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
@@ -45,22 +48,74 @@ const ChatScreen = ({navigation}: any) => {
       .collection('users')
       .doc(selfUid)
       .collection('watchers')
-      .doc('incoming-call');
+      .doc('incoming-call')
+      .collection('calls');
+
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot((snapshot: any) => {
+      if (snapshot._exists === false) {
+        return;
+      }
       // Process the changes here
       console.log(snapshot, '--snapshot data--');
-      if (snapshot?._data?.callStatus) {
-        console.log(snapshot?._data, '////////');
-        switch (snapshot?._data?.callStatus) {
+      console.log(snapshot?._docs[0]?._data, '--doc--');
+
+      //Check if the user is already in a call
+      const isInCallAlready = snapshot?.docs.some(
+        (doc: any) => doc.data().callStatus === 'connected',
+      );
+      console.log(isInCallAlready, '===***isInCallAlready***===');
+
+      const incomingCallData = snapshot?._docs[0]?._data;
+      if (incomingCallData?.callStatus && !isInCallAlready) {
+        switch (incomingCallData.callStatus) {
           case 'calling':
-            navigation.navigate('IncomingCall', {data: snapshot?._data});
+            navigation.navigate('IncomingCall', {data: incomingCallData});
             break;
           case 'disconnected':
             navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
             break;
           default:
             break;
+        }
+      }
+
+      const filteredCallingData = snapshot?.docs.filter(
+        (doc: any) => doc.data().callStatus === 'calling',
+      );
+      const anotherPersonCallingData = filteredCallingData[0]?._data;
+
+      //run when getting incoming call is there but user is already in another call
+      if (
+        isInCallAlready === true &&
+        anotherPersonCallingData?.callStatus === 'calling'
+      ) {
+        console.log('**another call**');
+        console.log(anotherPersonCallingData);
+        console.log('---==anotherPersonCallingData==---');
+
+        switch (anotherPersonCallingData.callStatus) {
+          case 'calling':
+            Alert.alert('Incoming call!', 'Please take an action ', [
+              {
+                text: 'Accept',
+                onPress: async () => {
+                  navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+                  navigation.navigate('IncomingCall', {
+                    data: anotherPersonCallingData,
+                  });
+                },
+              },
+              {
+                text: 'reject',
+                onPress: async () => {
+                  await deleteFirestoreCallData(
+                    anotherPersonCallingData[0]._data?.recipient_uid,
+                    anotherPersonCallingData[0]._data?.caller_uid,
+                  );
+                },
+              },
+            ]);
         }
       }
     });
@@ -71,43 +126,11 @@ const ChatScreen = ({navigation}: any) => {
   }, []);
 
   const makeCallRequest = async () => {
-    await putFirestore();
-    navigation.navigate(ROUTE_NAME.VIDEO_CALL_OUTGOING);
-  };
-
-  const putFirestore = async () => {
-    // Get a reference to the Firestore database
-    const db = firebase.firestore();
-    const roomName = 'room-' + selfUid + '-' + friendUid;
-
-    const tokenForFriend = await getToken(roomName, friendUid);
-    console.log(tokenForFriend, '===tokenForFriend===');
-    // Define the data you want to add
-    const sendData = {
-      caller_uid: String(selfUid),
-      recipient_uid: String(friendUid),
-      callTime: new Date().getTime(),
-      callStatus: 'calling',
-      roomName: roomName,
-      tokenToJoinRoom: tokenForFriend,
-    };
-
-    // Reference to the collection
-    const collectionRef = db
-      .collection('users')
-      .doc(friendUid)
-      .collection('watchers')
-      .doc('incoming-call');
-
-    // Add data to the document within the collection
-    await collectionRef
-      .set(sendData)
-      .then(() => {
-        console.log('Data added successfully!');
-      })
-      .catch(error => {
-        console.error('Error adding data: ', error);
-      });
+    await putCallDataFirestore(selfUid, friendUid);
+    navigation.navigate(ROUTE_NAME.VIDEO_CALL_OUTGOING, {
+      caller_uid: selfUid,
+      recipient_uid: friendUid,
+    });
   };
 
   return (

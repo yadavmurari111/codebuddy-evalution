@@ -32,6 +32,7 @@ import Mute from '../assets/incoming-call-assets/mute';
 import {useAuth} from '../AuthProvider';
 import {getToken} from '../VideoCallScreen';
 import {callEndPlay, callRingtonePlay, callRingtoneStop} from './CallDetails';
+import {deleteFirestoreCallData} from './callFunctions';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -46,6 +47,8 @@ const CallOutGoing = ({navigation, route}) => {
   const {
     user: {selfUid, friendUid},
   } = useAuth();
+
+  const {caller_uid, recipient_uid} = route.params || {};
 
   const animation = useSharedValue(0);
   const animatedStyleTop = useAnimatedStyle(() => {
@@ -84,8 +87,8 @@ const CallOutGoing = ({navigation, route}) => {
     setStatus('connected');
     callRingtoneStop();
 
-    const roomName = 'room-' + selfUid + '-' + friendUid;
-    const tokenForMe = await getToken(roomName, selfUid);
+    const roomName = 'room-' + caller_uid + '-' + friendUid;
+    const tokenForMe = await getToken(roomName, caller_uid); // caller_uid is self_uid
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_DETAIL, {
       isCalling: true,
       accessToken: tokenForMe,
@@ -94,34 +97,38 @@ const CallOutGoing = ({navigation, route}) => {
 
   const [status, setStatus] = useState('disconnected');
 
-  const updateFirestore = async callStatus => {
-    const db = firebase.firestore();
-    const updateData = {
-      callStatus: callStatus, // Replace 'updatedStatus' with the new call status value
-      callDisconnectedTime: new Date().getTime(),
-    };
-    const collectionRef = db
-      .collection('users')
-      .doc(friendUid)
-      .collection('watchers')
-      .doc('incoming-call');
-
-    try {
-      await collectionRef.update(updateData);
-      console.log('Call status updated successfully!');
-    } catch (error) {
-      console.error('Error updating call status: ', error);
-    }
-  };
+  // const updateFirestore = async callStatus => {
+  //   const db = firebase.firestore();
+  //   const updateData = {
+  //     callStatus: callStatus, // Replace 'updatedStatus' with the new call status value
+  //     callDisconnectedTime: new Date().getTime(),
+  //   };
+  //   const collectionRef = db
+  //     .collection('users')
+  //     .doc(friendUid)
+  //     .collection('watchers')
+  //     .doc('incoming-call')
+  //     .collection('calls')
+  //     .doc(friendUid);
+  //
+  //   try {
+  //     await collectionRef.update(updateData);
+  //     console.log('Call status updated successfully!');
+  //   } catch (error) {
+  //     console.error('Error updating call status: ', error);
+  //   }
+  // };
 
   // listener for friend's/recipient's actions (accepted /rejected etc)
   useEffect(() => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc(friendUid)
+      .doc(recipient_uid)
       .collection('watchers')
-      .doc('incoming-call');
+      .doc('incoming-call')
+      .collection('calls')
+      .doc(caller_uid);
 
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
@@ -130,10 +137,10 @@ const CallOutGoing = ({navigation, route}) => {
           case 'connected':
             await makeCallRequest();
             break;
-          case 'disconnected':
-            await onEndButtonPress();
-            break;
         }
+      }
+      if (snapshot._exists === false) {
+        await onEndButtonPress();
       }
     });
 
@@ -147,7 +154,7 @@ const CallOutGoing = ({navigation, route}) => {
     callEndPlay();
     clearTimeout(autoDisconnectTimeRef.current); // Clear the timer if the component unmounts before the timer expires
 
-    await updateFirestore('disconnected');
+    await deleteFirestoreCallData(recipient_uid, caller_uid);
     setStatus('disconnected');
     navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
   };

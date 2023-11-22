@@ -24,6 +24,11 @@ import Sound from 'react-native-sound';
 import callRingtone from '../assets/incoming-call-assets/ringtone.mp3';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import ROUTE_NAME from '../navigation/navigation-constants';
+import {
+  deleteFirestoreCallData,
+  updateCallConnectedFirestore,
+  updateCallDataFirestore,
+} from './callFunctions';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
 const {width, height} = Dimensions.get('window');
@@ -54,30 +59,33 @@ const callRingtoneStop = () => {
 
 const IncomingCall = ({navigation, route}) => {
   const {
-    data: {tokenToJoinRoom, recipient_uid},
+    data: {tokenToJoinRoom, caller_uid, recipient_uid},
   } = route.params || {};
 
   const [state, setstate] = useState(true);
   const [state2, setStateAccept] = useState(true);
 
-  const updateFirestore = async status => {
-    const db = firebase.firestore();
-    const updateData = {
-      callStatus: status, // Replace 'updatedStatus' with the new call status value
-      callConnectedTime: new Date().getTime(),
-    };
-    const collectionRef = db
-      .collection('users')
-      .doc(recipient_uid)
-      .collection('watchers')
-      .doc('incoming-call');
-    try {
-      await collectionRef.update(updateData);
-      console.log('Call status updated successfully!');
-    } catch (error) {
-      console.error('Error updating call status: ', error);
-    }
-  };
+  // const updateFirestore = async status => {
+  //   const db = firebase.firestore();
+  //   const updateData = {
+  //     callStatus: status, // Replace 'updatedStatus' with the new call status value
+  //     callConnectedTime: new Date().getTime(),
+  //   };
+  //   const collectionRef = db
+  //     .collection('users')
+  //     .doc(recipient_uid)
+  //     .collection('watchers')
+  //     .doc('incoming-call')
+  //     .collection('calls')
+  //     .doc(recipient_uid);
+  //
+  //   try {
+  //     await collectionRef.update(updateData);
+  //     console.log('Call status updated successfully!');
+  //   } catch (error) {
+  //     console.error('Error updating call status: ', error);
+  //   }
+  // };
 
   useEffect(() => {
     callRingtonePlay();
@@ -88,7 +96,7 @@ const IncomingCall = ({navigation, route}) => {
     //     cancelAnimation(animationRef.current[key])
     // })
     callRingtoneStop();
-    await updateFirestore('connected'); // update firestore call status for friend == connecting
+    await updateCallDataFirestore('connected', recipient_uid, caller_uid); // update firestore call status for friend == connecting
 
     setstate(false);
     acceptAnimatedValue.value = withTiming(1, {duration: 500}, () => {
@@ -97,6 +105,8 @@ const IncomingCall = ({navigation, route}) => {
         withTiming(500, {duration: 500}, () => {
           runOnJS(navigation.navigate)(ROUTE_NAME.VIDEO_CALL_DETAIL, {
             isCalling: false,
+            caller_uid: caller_uid,
+            recipient_uid: recipient_uid,
             accessToken: tokenToJoinRoom,
           });
         }),
@@ -106,8 +116,7 @@ const IncomingCall = ({navigation, route}) => {
   const onReject = async () => {
     callRingtoneStop();
     callEndPlay();
-    await updateFirestore('disconnected');
-    //navigation.goBack();
+    await deleteFirestoreCallData(recipient_uid, caller_uid);
   };
   const translateY = useSharedValue(0);
 

@@ -36,6 +36,7 @@ import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
 import Sound from 'react-native-sound';
 import ElapsedTimeInSeconds from './callTimer';
+import {deleteFirestoreCallData} from './callFunctions';
 
 const CallHangup = new Sound(callHangup);
 const CallRingtone = new Sound(callRingtone);
@@ -63,7 +64,8 @@ const ACTION_CONTAINER_HEIGHT = 90;
 const ACTION_CONTAINER_WIDTH = width - ACTION_CONTAINER_MARGIN_TOP * 2;
 
 const CallDetails = ({navigation, route}) => {
-  const {isCalling, accessToken} = route.params || {};
+  const {isCalling, accessToken, recipient_uid, caller_uid} =
+    route.params || {};
   const animation = useSharedValue(0);
   const animatedStyleTop = useAnimatedStyle(() => {
     return {
@@ -129,11 +131,14 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onEndButtonPress = async () => {
+    if (status === 'disconnected') {
+      return;
+    }
     callRingtoneStop();
     callEndPlay();
 
     twilioRef.current.disconnect();
-    await updateFirestore('disconnected');
+    await deleteFirestoreCallData(recipient_uid, caller_uid);
     setStatus('disconnected');
     navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
   };
@@ -153,25 +158,24 @@ const CallDetails = ({navigation, route}) => {
     twilioRef.current.toggleSoundSetup(isSpeakerMode);
   };
 
-  const updateFirestore = async callStatus => {
-    const db = firebase.firestore();
-    const updateData = {
-      callStatus: callStatus, // Replace 'updatedStatus' with the new call status value
-      callDisconnectedTime: new Date().getTime(),
-    };
-    const collectionRef = db
-      .collection('users')
-      .doc(!isCalling ? selfUid : friendUid)
-      .collection('watchers')
-      .doc('incoming-call');
-
-    try {
-      await collectionRef.update(updateData);
-      console.log('Call status updated successfully!');
-    } catch (error) {
-      console.error('Error updating call status: ', error);
-    }
-  };
+  // const deleteFirestoreCallData = async caller_uid => {
+  //   const db = firebase.firestore();
+  //
+  //   const collectionRef = db
+  //     .collection('users')
+  //     .doc(!isCalling ? selfUid : friendUid)
+  //     .collection('watchers')
+  //     .doc('incoming-call')
+  //     .collection('calls')
+  //     .doc(caller_uid);
+  //
+  //   try {
+  //     await collectionRef.delete();
+  //     console.log('Call status updated successfully!');
+  //   } catch (error) {
+  //     console.error('Error updating call status: ', error);
+  //   }
+  // };
 
   const updateMuteStatusToFirestore = async muteStatus => {
     const db = firebase.firestore();
@@ -188,7 +192,9 @@ const CallDetails = ({navigation, route}) => {
       .collection('users')
       .doc(!isCalling ? selfUid : friendUid)
       .collection('watchers')
-      .doc('incoming-call');
+      .doc('incoming-call')
+      .collection('calls')
+      .doc(isCalling ? friendUid : selfUid);
 
     try {
       await collectionRef.update(updateData);
@@ -221,6 +227,9 @@ const CallDetails = ({navigation, route}) => {
 
   const [isFriendMute, setIsFriendMute] = useState(false);
   const [callTimer, setCallTimer] = useState(null);
+
+  //isCalling ? friendUid : selfUid
+
   // this listener is for "call disconnected" by friend
   useEffect(() => {
     const db = firebase.firestore();
@@ -228,19 +237,18 @@ const CallDetails = ({navigation, route}) => {
       .collection('users')
       .doc(isCalling ? friendUid : selfUid)
       .collection('watchers')
-      .doc('incoming-call');
+      .doc('incoming-call')
+      .collection('calls')
+      .doc(isCalling ? friendUid : selfUid);
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
       // Process the changes here
       console.log(snapshot, '--snapshot data-- in detail screen');
 
-      if (snapshot?._data?.callStatus) {
-        switch (snapshot?._data?.callStatus) {
-          case 'disconnected':
-            //s await onEndButtonPress();
-            break;
-        }
+      if (snapshot._exists === false) {
+        await onEndButtonPress();
       }
+
       setCallTimer(snapshot._data.callConnectedTime);
 
       setIsFriendMute(
@@ -251,6 +259,50 @@ const CallDetails = ({navigation, route}) => {
     });
     return () => {
       unsubscribe(); // Unsubscribe the listener when the component unmounts
+    };
+  }, []);
+
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc('murari')
+      .collection('watchers')
+      .doc('incoming-call')
+      .collection('calls');
+
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(snapshot => {
+      if (snapshot._exists === false) {
+        return;
+      }
+
+      //Check if the user is already in a call
+      const isInCall = snapshot?.docs.some(
+        doc => doc.data()?.callStatus === 'connected',
+      );
+      console.log(isInCall, '==isInCall===');
+      console.log(snapshot?._docs, '==snapshot?._docs ===');
+
+      const anotherPersonCallingData = snapshot?._docs[1]?._data;
+
+      if (isInCall && anotherPersonCallingData?.callStatus === 'calling') {
+        Alert.alert('Incoming call!', 'Please take an action', [
+          {text: 'accept'},
+          {
+            text: 'reject',
+            onPress: async () => {
+              await deleteFirestoreCallData(
+                anotherPersonCallingData.caller_uid,
+              );
+            },
+          },
+        ]);
+      }
+    });
+    return () => {
+      // Unsubscribe the listener when the component unmounts
+      unsubscribe();
     };
   }, []);
 
