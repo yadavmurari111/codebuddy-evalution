@@ -114,8 +114,8 @@ const ChatScreen = ({navigation}: any) => {
                   text: 'reject',
                   onPress: async () => {
                     await deleteFirestoreCallData(
-                      anotherPersonCallingData[0]._data?.recipient_uid,
-                      anotherPersonCallingData[0]._data?.caller_uid,
+                      anotherPersonCallingData.recipient_uid,
+                      anotherPersonCallingData.caller_uid,
                     );
                   },
                 },

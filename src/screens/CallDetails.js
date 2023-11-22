@@ -2,6 +2,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Text,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
@@ -348,6 +349,7 @@ const CallDetails = ({navigation, route}) => {
           {callTimer !== null && (
             <ElapsedTimeInSeconds startTimestamp={callTimer} />
           )}
+          <Text>on call with: +{recipient_uid}</Text>
 
           <Animated.View style={[{position: 'absolute', top: 0}]}>
             <SmallWindow animation={animation} isFriendMute={isFriendMute} />
