@@ -129,16 +129,16 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onEndButtonPress = async () => {
-    if (status === 'disconnected') {
-      return;
-    }
-    callRingtoneStop();
+    // if (status === 'disconnected') {
+    //   return;
+    // }
+
     callEndPlay();
 
     twilioRef.current.disconnect();
     await deleteFirestoreCallData(recipient_uid, caller_uid);
-    setStatus('disconnected');
-    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+    //setStatus('disconnected');
+    // navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
   };
 
   const onMuteButtonPress = isMute => {
@@ -260,50 +260,6 @@ const CallDetails = ({navigation, route}) => {
     };
   }, []);
 
-  useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(recipient_uid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls');
-
-    // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(snapshot => {
-      if (snapshot._exists === false) {
-        return;
-      }
-
-      //Check if the user is already in a call
-      const isInCall = snapshot?.docs.some(
-        doc => doc.data()?.callStatus === 'connected',
-      );
-      console.log(isInCall, '==isInCall===');
-      console.log(snapshot?._docs, '==snapshot?._docs ===');
-
-      const anotherPersonCallingData = snapshot?._docs[1]?._data;
-
-      if (isInCall && anotherPersonCallingData?.callStatus === 'calling') {
-        // Alert.alert('Incoming call!', 'Please take an action', [
-        //   {text: 'accept'},
-        //   {
-        //     text: 'reject',
-        //     onPress: async () => {
-        //       await deleteFirestoreCallData(
-        //         anotherPersonCallingData.caller_uid,
-        //       );
-        //     },
-        //   },
-        // ]);
-      }
-    });
-    return () => {
-      // Unsubscribe the listener when the component unmounts
-      unsubscribe();
-    };
-  }, []);
-
   return (
     <AnimatedTouchableWithoutFeedback onPress={handleTapIn}>
       <View style={styles.container}>
@@ -365,7 +321,7 @@ const CallDetails = ({navigation, route}) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={onEndButtonPress}
+            onPress={() => navigation.navigate(ROUTE_NAME.CHAT_SCREEN)} // on end
             style={{
               width: 70,
               height: 70,

@@ -246,7 +246,7 @@ const IncomingCall = ({navigation, route}) => {
             )}
             {state ? (
               <AnimatedTouch
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.goBack()} //on reject
                 exiting={FadeOut}
                 style={[
                   {
