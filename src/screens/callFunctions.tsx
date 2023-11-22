@@ -16,8 +16,17 @@ export const deleteFirestoreCallData = async (
     .collection('calls')
     .doc(caller_uid);
 
+  const collectionRef2 = db
+    .collection('users')
+    .doc(caller_uid)
+    .collection('watchers')
+    .doc('incoming-call')
+    .collection('calls')
+    .doc(recipient_uid);
+
   try {
     await collectionRef.delete();
+    await collectionRef2.delete();
     console.log('Call data deleted successfully!');
   } catch (error) {
     console.error('Error deleting call data: ', error);
