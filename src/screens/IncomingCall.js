@@ -105,19 +105,15 @@ const IncomingCall = ({navigation, route}) => {
         withTiming(500, {duration: 500}, () => {
           runOnJS(navigation.navigate)(ROUTE_NAME.VIDEO_CALL_DETAIL, {
             isCalling: false,
-            caller_uid: recipient_uid,
-            recipient_uid: caller_uid,
+            caller_uid: caller_uid,
+            recipient_uid: recipient_uid,
             accessToken: tokenToJoinRoom,
           });
         }),
       );
     });
   };
-  const onReject = async () => {
-    callRingtoneStop();
-    callEndPlay();
-    await deleteFirestoreCallData(recipient_uid, caller_uid);
-  };
+
   const translateY = useSharedValue(0);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -127,6 +123,12 @@ const IncomingCall = ({navigation, route}) => {
   });
 
   const focused = useIsFocused();
+
+  const onReject = async () => {
+    callRingtoneStop();
+    callEndPlay();
+    await deleteFirestoreCallData(recipient_uid, caller_uid);
+  };
 
   // run at the time of unmounting
   useEffect(() => {
@@ -244,7 +246,7 @@ const IncomingCall = ({navigation, route}) => {
             )}
             {state ? (
               <AnimatedTouch
-                onPress={onReject}
+                onPress={() => navigation.goBack()}
                 exiting={FadeOut}
                 style={[
                   {

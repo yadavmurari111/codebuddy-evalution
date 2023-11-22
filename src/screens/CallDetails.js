@@ -64,6 +64,10 @@ const ACTION_CONTAINER_WIDTH = width - ACTION_CONTAINER_MARGIN_TOP * 2;
 const CallDetails = ({navigation, route}) => {
   const {isCalling, accessToken, recipient_uid, caller_uid} =
     route.params || {};
+
+  console.log(recipient_uid, '---recipient_uid---');
+  console.log(caller_uid, '---caller_uid---');
+
   const animation = useSharedValue(0);
   const animatedStyleTop = useAnimatedStyle(() => {
     return {

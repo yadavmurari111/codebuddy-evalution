@@ -82,7 +82,7 @@ const CallOutGoing = ({navigation, route}) => {
     animate(Number(!animation.value), 0);
   };
 
-  const makeCallRequest = async () => {
+  const navigateToCallDetail = async () => {
     console.log('call accepted by friend!');
     setStatus('connected');
     callRingtoneStop();
@@ -134,10 +134,13 @@ const CallOutGoing = ({navigation, route}) => {
 
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
+      console.log(snapshot);
+      console.log(recipient_uid, caller_uid);
+      console.log('recipient_uid', 'caller_uid');
       if (snapshot?._data?.callStatus) {
         switch (snapshot?._data?.callStatus) {
           case 'connected':
-            await makeCallRequest();
+            await navigateToCallDetail();
             break;
         }
       }
