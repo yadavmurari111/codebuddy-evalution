@@ -87,7 +87,7 @@ const ChatScreen = ({navigation}: any) => {
 
       //run when getting incoming call is there but user is already in another call
       if (
-        isInCallAlready === true &&
+        isInCallAlready &&
         anotherPersonCallingData?.callStatus === 'calling'
       ) {
         console.log('**another call**');
@@ -96,26 +96,31 @@ const ChatScreen = ({navigation}: any) => {
 
         switch (anotherPersonCallingData.callStatus) {
           case 'calling':
-            Alert.alert('Incoming call!', 'Please take an action ', [
-              {
-                text: 'Accept',
-                onPress: async () => {
-                  navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
-                  navigation.navigate('IncomingCall', {
-                    data: anotherPersonCallingData,
-                  });
+            Alert.alert(
+              'Incoming call from :' + anotherPersonCallingData.caller_uid,
+              'Please take an action , calling to: ' +
+                anotherPersonCallingData.recipient_uid,
+              [
+                {
+                  text: 'Accept',
+                  onPress: async () => {
+                    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+                    navigation.navigate('IncomingCall', {
+                      data: anotherPersonCallingData,
+                    });
+                  },
                 },
-              },
-              {
-                text: 'reject',
-                onPress: async () => {
-                  await deleteFirestoreCallData(
-                    anotherPersonCallingData[0]._data?.recipient_uid,
-                    anotherPersonCallingData[0]._data?.caller_uid,
-                  );
+                {
+                  text: 'reject',
+                  onPress: async () => {
+                    await deleteFirestoreCallData(
+                      anotherPersonCallingData[0]._data?.recipient_uid,
+                      anotherPersonCallingData[0]._data?.caller_uid,
+                    );
+                  },
                 },
-              },
-            ]);
+              ],
+            );
         }
       }
     });

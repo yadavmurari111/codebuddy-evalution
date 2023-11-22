@@ -91,6 +91,8 @@ const CallOutGoing = ({navigation, route}) => {
     const tokenForMe = await getToken(roomName, caller_uid); // caller_uid is self_uid
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_DETAIL, {
       isCalling: true,
+      caller_uid: caller_uid,
+      recipient_uid: recipient_uid,
       accessToken: tokenForMe,
     });
   };

@@ -30,8 +30,6 @@ import ROUTE_NAME from '../navigation/navigation-constants';
 import {TwilioVideo} from 'react-native-twilio-video-webrtc';
 import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
-import CallTimer from './callTimer';
-import {useAuth} from '../AuthProvider';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
 import Sound from 'react-native-sound';
@@ -104,10 +102,6 @@ const CallDetails = ({navigation, route}) => {
     animate(1, 5000);
   };
 
-  const {
-    user: {selfUid, friendUid},
-  } = useAuth();
-
   const twilioRef = useRef(null);
 
   const [status, setStatus] = useState('disconnected');
@@ -117,7 +111,7 @@ const CallDetails = ({navigation, route}) => {
   const onRoomConnect = ({roomName, error}) => {
     console.log('onRoomDidConnect: ', roomName);
     console.log('[onRoomDidConnect]ERROR: ', error);
-    Alert.alert('room connected');
+    //Alert.alert('room connected');
 
     setStatus('connected');
   };
@@ -190,11 +184,11 @@ const CallDetails = ({navigation, route}) => {
       : updateRecipientMuteData;
     const collectionRef = db
       .collection('users')
-      .doc(!isCalling ? selfUid : friendUid)
+      .doc(recipient_uid)
       .collection('watchers')
       .doc('incoming-call')
       .collection('calls')
-      .doc(isCalling ? friendUid : selfUid);
+      .doc(caller_uid);
 
     try {
       await collectionRef.update(updateData);
@@ -235,11 +229,11 @@ const CallDetails = ({navigation, route}) => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc(isCalling ? friendUid : selfUid)
+      .doc(recipient_uid)
       .collection('watchers')
       .doc('incoming-call')
       .collection('calls')
-      .doc(isCalling ? friendUid : selfUid);
+      .doc(caller_uid);
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
       // Process the changes here
@@ -266,7 +260,7 @@ const CallDetails = ({navigation, route}) => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc('murari')
+      .doc(recipient_uid)
       .collection('watchers')
       .doc('incoming-call')
       .collection('calls');
@@ -287,17 +281,17 @@ const CallDetails = ({navigation, route}) => {
       const anotherPersonCallingData = snapshot?._docs[1]?._data;
 
       if (isInCall && anotherPersonCallingData?.callStatus === 'calling') {
-        Alert.alert('Incoming call!', 'Please take an action', [
-          {text: 'accept'},
-          {
-            text: 'reject',
-            onPress: async () => {
-              await deleteFirestoreCallData(
-                anotherPersonCallingData.caller_uid,
-              );
-            },
-          },
-        ]);
+        // Alert.alert('Incoming call!', 'Please take an action', [
+        //   {text: 'accept'},
+        //   {
+        //     text: 'reject',
+        //     onPress: async () => {
+        //       await deleteFirestoreCallData(
+        //         anotherPersonCallingData.caller_uid,
+        //       );
+        //     },
+        //   },
+        // ]);
       }
     });
     return () => {
