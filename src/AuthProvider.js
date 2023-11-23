@@ -110,8 +110,8 @@ const formatUser = user => {
   return {
     uid: user.uid,
     email: user.email,
-    selfUid: user.email === 'fitmurari@gmail.com' ? 'murari' : 'lexy',
-    friendUid: user.email !== 'fitmurari@gmail.com' ? 'murari' : 'lexy',
+    selfUid: user.email === 'fitmurari@gmail.com' ? 'murari' : 'akram',
+    friendUid: user.email !== 'fitmurari@gmail.com' ? 'murari' : 'akram',
     // name: user.displayName,
     // provider: user.providerData[0].providerId,
     // photoUrl: user.photoURL,

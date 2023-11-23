@@ -11,7 +11,7 @@ import {firebase} from '@react-native-firebase/firestore';
 import {useAuth} from './AuthProvider';
 import {
   deleteFirestoreCallData,
-  putCallDataFirestore,
+  putCallingDataFirestore,
 } from './screens/callFunctions';
 
 const ChatScreen = ({navigation}: any) => {
@@ -41,7 +41,33 @@ const ChatScreen = ({navigation}: any) => {
     });
   };
 
-  const [inCallStatus, setInCallStatus] = useState(false);
+  const showAnotherCallAlert = (anotherPersonCallingData: any) => {
+    Alert.alert(
+      'Incoming call from :' + anotherPersonCallingData.caller_uid,
+      'Please take an action , calling to: ' +
+        anotherPersonCallingData.recipient_uid,
+      [
+        {
+          text: 'Accept',
+          onPress: async () => {
+            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+            navigation.navigate('IncomingCall', {
+              data: anotherPersonCallingData,
+            });
+          },
+        },
+        {
+          text: 'reject',
+          onPress: async () => {
+            await deleteFirestoreCallData(
+              anotherPersonCallingData.recipient_uid,
+              anotherPersonCallingData.caller_uid,
+            );
+          },
+        },
+      ],
+    );
+  };
 
   // this listener for incoming calls (move it to Navigation container level)
   useEffect(() => {
@@ -53,110 +79,64 @@ const ChatScreen = ({navigation}: any) => {
       .doc('incoming-call')
       .collection('calls');
 
-    const rootCollectionRef2 = db
+    const isInCallRef = db
       .collection('users')
-      .doc(friendUid)
+      .doc(selfUid)
       .collection('watchers')
       .doc('incoming-call')
-      .collection('calls');
-
-    const unsubscribe2 = rootCollectionRef2.onSnapshot((snapshot: any) => {
-      // Process the changes here
-      console.log(snapshot, '--snapshot --');
-      console.log(snapshot?._docs[0]?._data, '--doc--');
-
-      //Check if the user is already in a call
-      const isInCallAlready2 = snapshot?.docs.some(
-        (doc: any) => doc.data().callStatus === 'connected',
-      );
-      console.log(isInCallAlready2, '--isInCallAlready2 --');
-      setInCallStatus(isInCallAlready2);
-    });
+      .collection('calls')
+      .doc('isInCall'); // caller uid
 
     // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot((snapshot: any) => {
+    const unsubscribe = rootCollectionRef.onSnapshot(async (snapshot: any) => {
       if (snapshot._exists === false) {
         return;
       }
-      // Process the changes here
-      console.log(snapshot, '--snapshot data--');
-      console.log(snapshot?._docs[0]?._data, '--doc--');
 
-      //Check if the user is already in a call
-      const isInCallAlready = snapshot?.docs.some(
-        (doc: any) => doc.data().callStatus === 'connected',
+      const callDataArray = snapshot?._docs;
+      const isInCallAlreadyData = await isInCallRef.get();
+      const isInCallAlreadyFlag = isInCallAlreadyData?._data?.inCall;
+
+      console.log(isInCallAlreadyFlag, '***isInCallAlreadyFlag***');
+      console.log(snapshot, '----snapshot data----');
+      console.log(snapshot?._docs, '--***doc***--');
+
+      const callingData = callDataArray.filter(
+        (doc: any) => doc.data().callStatus === 'calling',
       );
+      const incomingCallData = callingData[0]?._data;
 
-      console.log(isInCallAlready, '===***isInCallAlready***===');
-
-      const incomingCallData = snapshot?._docs[0]?._data;
-      if (incomingCallData?.callStatus && !isInCallAlready && !inCallStatus) {
+      if (incomingCallData?.callStatus && !isInCallAlreadyFlag) {
         switch (incomingCallData.callStatus) {
           case 'calling':
             navigation.navigate('IncomingCall', {data: incomingCallData});
-            break;
-          case 'disconnected':
-            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
             break;
           default:
             break;
         }
       }
 
-      const filteredCallingData = snapshot?.docs.filter(
-        (doc: any) => doc.data().callStatus === 'calling',
-      );
-      const anotherPersonCallingData = filteredCallingData[0]?._data;
+      // if (incomingCallData?.callStatus === undefined) {
+      //   navigation.navigate(ROUTE_NAME.CHAT_SCREEN); // navigate back from call detail screen to chat screen when call disconnected
+      // }
 
-      //run when getting incoming call is there but user is already in another call
-      if (
-        (inCallStatus || isInCallAlready) &&
-        anotherPersonCallingData?.callStatus === 'calling'
-      ) {
-        console.log('**another call**');
-        console.log(anotherPersonCallingData);
-        console.log('---==anotherPersonCallingData==---');
+      //run when getting incoming call but user is already in another call
+      if (isInCallAlreadyFlag && incomingCallData?.callStatus === 'calling') {
+        console.log('**another incoming call**');
+        console.log(incomingCallData);
+        console.log('--anotherPersonCallingData--');
 
-        switch (anotherPersonCallingData.callStatus) {
-          case 'calling':
-            Alert.alert(
-              'Incoming call from :' + anotherPersonCallingData.caller_uid,
-              'Please take an action , calling to: ' +
-                anotherPersonCallingData.recipient_uid,
-              [
-                {
-                  text: 'Accept',
-                  onPress: async () => {
-                    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
-                    navigation.navigate('IncomingCall', {
-                      data: anotherPersonCallingData,
-                    });
-                  },
-                },
-                {
-                  text: 'reject',
-                  onPress: async () => {
-                    await deleteFirestoreCallData(
-                      anotherPersonCallingData.recipient_uid,
-                      anotherPersonCallingData.caller_uid,
-                    );
-                  },
-                },
-              ],
-            );
-        }
+        showAnotherCallAlert(incomingCallData);
       }
     });
 
     return () => {
-      // Unsubscribe the listener when the component unmounts
-      unsubscribe();
-      unsubscribe2();
+      unsubscribe(); // Unsubscribe the listener when the component unmounts
     };
   }, []);
 
   const makeCallRequest = async () => {
-    await putCallDataFirestore(selfUid, friendUid);
+    await putCallingDataFirestore(selfUid, friendUid);
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_OUTGOING, {
       caller_uid: selfUid,
       recipient_uid: friendUid,

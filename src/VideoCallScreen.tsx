@@ -23,32 +23,6 @@ import {firebase} from '@react-native-firebase/firestore';
 import {useAuth} from './AuthProvider';
 import Sound from 'react-native-sound';
 
-export const getToken = async (roomName: string, identityName: string) => {
-  const requestData = {roomName, identityName};
-
-  // const {
-  //   user: {selfUid, friendUid},
-  // } = useAuth();
-
-  const headers = {'Content-Type': 'application/json'};
-
-  //http://192.168.29.244:5000/join-room
-  return await axios
-    .post('http://192.168.29.244:5000/join-room', requestData, {headers})
-    .then((response: {data: any}) => {
-      if (response.data) {
-        console.log(JSON.stringify(response.data.token));
-        return response?.data.token;
-      }
-      //Alert.alert('ok');
-    })
-    .catch((error: any) => {
-      console.log(error);
-      Alert.alert('error', String(error));
-      return null;
-    });
-};
-
 interface IVideoCallScreen {
   navigation: any;
   route: any;

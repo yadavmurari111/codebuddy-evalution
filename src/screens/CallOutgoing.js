@@ -30,13 +30,8 @@ import ROUTE_NAME from '../navigation/navigation-constants';
 import {firebase} from '@react-native-firebase/firestore';
 import Mute from '../assets/incoming-call-assets/mute';
 import {useAuth} from '../AuthProvider';
-import {getToken} from '../VideoCallScreen';
 import {callEndPlay, callRingtonePlay, callRingtoneStop} from './CallDetails';
-import {
-  deleteFirestoreCallData,
-  putCallDataFirestore,
-  putCallerDataFirestore,
-} from './callFunctions';
+import {deleteFirestoreCallData, getToken} from './callFunctions';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -103,28 +98,6 @@ const CallOutGoing = ({navigation, route}) => {
 
   const [status, setStatus] = useState('disconnected');
 
-  // const updateFirestore = async callStatus => {
-  //   const db = firebase.firestore();
-  //   const updateData = {
-  //     callStatus: callStatus, // Replace 'updatedStatus' with the new call status value
-  //     callDisconnectedTime: new Date().getTime(),
-  //   };
-  //   const collectionRef = db
-  //     .collection('users')
-  //     .doc(friendUid)
-  //     .collection('watchers')
-  //     .doc('incoming-call')
-  //     .collection('calls')
-  //     .doc(friendUid);
-  //
-  //   try {
-  //     await collectionRef.update(updateData);
-  //     console.log('Call status updated successfully!');
-  //   } catch (error) {
-  //     console.error('Error updating call status: ', error);
-  //   }
-  // };
-
   // listener for friend's/recipient's actions (accepted /rejected etc)
   useEffect(() => {
     const db = firebase.firestore();
@@ -145,13 +118,12 @@ const CallOutGoing = ({navigation, route}) => {
         switch (snapshot?._data?.callStatus) {
           case 'connected':
             await navigateToCallDetail();
-            await putCallerDataFirestore(recipient_uid, caller_uid);
             break;
         }
       }
-      if (snapshot._exists === false) {
-        await onEndButtonPress();
-      }
+      // if (snapshot._exists === false) {
+      //   await onEndButtonPress();
+      // }
     });
 
     return () => {
@@ -175,7 +147,7 @@ const CallOutGoing = ({navigation, route}) => {
     callRingtonePlay();
     autoDisconnectTimeRef.current = setTimeout(async () => {
       if (status === 'disconnected') {
-        // await onEndButtonPress(); // This code will run after a delay of 30 seconds (30000 milliseconds)
+        //await onEndButtonPress(); // This code will run after a delay of 30 seconds (30000 milliseconds)
       }
     }, 30000); // 30 seconds in milliseconds
 

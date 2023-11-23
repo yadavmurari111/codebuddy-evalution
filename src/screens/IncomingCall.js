@@ -2,6 +2,7 @@ import {
   Dimensions,
   Image,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -19,14 +20,12 @@ import Animated, {
 import {SharedElement} from 'react-navigation-shared-element';
 import {useIsFocused} from '@react-navigation/native';
 import {animationRef} from '../../App';
-import {firebase} from '@react-native-firebase/firestore';
 import Sound from 'react-native-sound';
 import callRingtone from '../assets/incoming-call-assets/ringtone.mp3';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import ROUTE_NAME from '../navigation/navigation-constants';
 import {
   deleteFirestoreCallData,
-  updateCallConnectedFirestore,
   updateCallDataFirestore,
 } from './callFunctions';
 
@@ -200,6 +199,10 @@ const IncomingCall = ({navigation, route}) => {
         <View>
           <UserImage waveEnable={state} />
         </View>
+        <Text style={{fontSize: 20, color: 'white', fontWeight: '700'}}>
+          {recipient_uid} calling you..
+        </Text>
+
         <Animated.View
           style={[
             {
