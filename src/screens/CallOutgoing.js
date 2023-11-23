@@ -121,9 +121,9 @@ const CallOutGoing = ({navigation, route}) => {
             break;
         }
       }
-      // if (snapshot._exists === false) {
-      //   await onEndButtonPress();
-      // }
+      if (snapshot._exists === false) {
+        await onEndButtonPress();
+      }
     });
 
     return () => {
@@ -147,7 +147,7 @@ const CallOutGoing = ({navigation, route}) => {
     callRingtonePlay();
     autoDisconnectTimeRef.current = setTimeout(async () => {
       if (status === 'disconnected') {
-        //await onEndButtonPress(); // This code will run after a delay of 30 seconds (30000 milliseconds)
+        await onEndButtonPress(); // This code will run after a delay of 30 seconds (30000 milliseconds)
       }
     }, 30000); // 30 seconds in milliseconds
 

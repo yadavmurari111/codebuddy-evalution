@@ -28,6 +28,7 @@ import {
   deleteFirestoreCallData,
   updateCallDataFirestore,
 } from './callFunctions';
+import {firebase} from '@react-native-firebase/firestore';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
 const {width, height} = Dimensions.get('window');
@@ -63,28 +64,6 @@ const IncomingCall = ({navigation, route}) => {
 
   const [state, setstate] = useState(true);
   const [state2, setStateAccept] = useState(true);
-
-  // const updateFirestore = async status => {
-  //   const db = firebase.firestore();
-  //   const updateData = {
-  //     callStatus: status, // Replace 'updatedStatus' with the new call status value
-  //     callConnectedTime: new Date().getTime(),
-  //   };
-  //   const collectionRef = db
-  //     .collection('users')
-  //     .doc(recipient_uid)
-  //     .collection('watchers')
-  //     .doc('incoming-call')
-  //     .collection('calls')
-  //     .doc(recipient_uid);
-  //
-  //   try {
-  //     await collectionRef.update(updateData);
-  //     console.log('Call status updated successfully!');
-  //   } catch (error) {
-  //     console.error('Error updating call status: ', error);
-  //   }
-  // };
 
   useEffect(() => {
     callRingtonePlay();
@@ -172,6 +151,32 @@ const IncomingCall = ({navigation, route}) => {
       ),
     };
   });
+
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(recipient_uid)
+      .collection('watchers')
+      .doc('incoming-call')
+      .collection('calls')
+      .doc(caller_uid);
+
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
+      console.log(snapshot, '***************************');
+      console.log(recipient_uid, caller_uid);
+      console.log('recipient_uid', 'caller_uid');
+
+      if (snapshot._exists === false) {
+        navigation.goBack();
+      }
+    });
+
+    return () => {
+      unsubscribe(); // Unsubscribe the listener when the component unmounts
+    };
+  }, []);
 
   return (
     <View style={{flex: 1, justifyContent: 'flex-end'}}>

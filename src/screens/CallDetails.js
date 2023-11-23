@@ -212,36 +212,36 @@ const CallDetails = ({navigation, route}) => {
   //isCalling ? friendUid : selfUid
 
   // this listener is for "call disconnected" by friend
-  // useEffect(() => {
-  //   const db = firebase.firestore();
-  //   const rootCollectionRef = db
-  //     .collection('users')
-  //     .doc(recipient_uid)
-  //     .collection('watchers')
-  //     .doc('incoming-call')
-  //     .collection('calls')
-  //     .doc(caller_uid);
-  //   // Add a real-time listener to the root collection
-  //   const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-  //     // Process the changes here
-  //     console.log(snapshot, '--snapshot data-- in detail screen');
-  //
-  //     // if (snapshot._exists === false) {
-  //     //   await onEndButtonPress();
-  //     // }
-  //
-  //     setCallTimer(snapshot._data.callConnectedTime);
-  //
-  //     setIsFriendMute(
-  //       !isCalling
-  //         ? snapshot._data.isCallerMute
-  //         : snapshot._data.isRecipientMute,
-  //     );
-  //   });
-  //   return () => {
-  //     unsubscribe(); // Unsubscribe the listener when the component unmounts
-  //   };
-  // }, []);
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(recipient_uid)
+      .collection('watchers')
+      .doc('incoming-call')
+      .collection('calls')
+      .doc(caller_uid);
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
+      // Process the changes here
+      console.log(snapshot, '--snapshot data-- in detail screen');
+
+      if (snapshot._exists === false) {
+        await onEndButtonPress();
+      }
+
+      setCallTimer(snapshot._data.callConnectedTime);
+
+      setIsFriendMute(
+        !isCalling
+          ? snapshot._data.isCallerMute
+          : snapshot._data.isRecipientMute,
+      );
+    });
+    return () => {
+      unsubscribe(); // Unsubscribe the listener when the component unmounts
+    };
+  }, []);
 
   return (
     <AnimatedTouchableWithoutFeedback onPress={handleTapIn}>
