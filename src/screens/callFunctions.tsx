@@ -42,6 +42,7 @@ export const updateCallDataFirestore = async (
 ) => {
   const updateData = {
     callStatus: status, // Replace 'updatedStatus' with the new call status value
+    isInCall: true,
     callConnectedTime: new Date().getTime(),
   };
   const collectionRef = db
@@ -78,6 +79,41 @@ export const putCallDataFirestore = async (
     callStatus: 'calling',
     roomName: roomName,
     tokenToJoinRoom: tokenForFriend,
+  };
+
+  // Reference to the collection
+  const collectionRef = db
+    .collection('users')
+    .doc(friendUid)
+    .collection('watchers')
+    .doc('incoming-call')
+    .collection('calls')
+    .doc(selfUid); // caller uid
+
+  // Add data to the document within the collection
+  await collectionRef
+    .set(sendData)
+    .then(() => {
+      console.log('Data added successfully!');
+    })
+    .catch(error => {
+      console.error('Error adding data: ', error);
+    });
+};
+
+export const putCallerDataFirestore = async (
+  selfUid: string,
+  friendUid: string,
+) => {
+  const roomName = 'room-' + selfUid + '-' + friendUid;
+
+  const tokenForFriend = await getToken(roomName, friendUid);
+  console.log(tokenForFriend, '===tokenForFriend===');
+  // Define the data you want to add
+  const sendData = {
+    caller_uid: String(selfUid),
+    recipient_uid: String(friendUid),
+    isInCall: true,
   };
 
   // Reference to the collection

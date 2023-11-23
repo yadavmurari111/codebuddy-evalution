@@ -41,6 +41,8 @@ const ChatScreen = ({navigation}: any) => {
     });
   };
 
+  const [inCallStatus, setInCallStatus] = useState(false);
+
   // this listener for incoming calls (move it to Navigation container level)
   useEffect(() => {
     const db = firebase.firestore();
@@ -50,6 +52,26 @@ const ChatScreen = ({navigation}: any) => {
       .collection('watchers')
       .doc('incoming-call')
       .collection('calls');
+
+    const rootCollectionRef2 = db
+      .collection('users')
+      .doc(friendUid)
+      .collection('watchers')
+      .doc('incoming-call')
+      .collection('calls');
+
+    const unsubscribe2 = rootCollectionRef2.onSnapshot((snapshot: any) => {
+      // Process the changes here
+      console.log(snapshot, '--snapshot --');
+      console.log(snapshot?._docs[0]?._data, '--doc--');
+
+      //Check if the user is already in a call
+      const isInCallAlready2 = snapshot?.docs.some(
+        (doc: any) => doc.data().callStatus === 'connected',
+      );
+      console.log(isInCallAlready2, '--isInCallAlready2 --');
+      setInCallStatus(isInCallAlready2);
+    });
 
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot((snapshot: any) => {
@@ -64,10 +86,11 @@ const ChatScreen = ({navigation}: any) => {
       const isInCallAlready = snapshot?.docs.some(
         (doc: any) => doc.data().callStatus === 'connected',
       );
+
       console.log(isInCallAlready, '===***isInCallAlready***===');
 
       const incomingCallData = snapshot?._docs[0]?._data;
-      if (incomingCallData?.callStatus && !isInCallAlready) {
+      if (incomingCallData?.callStatus && !isInCallAlready && !inCallStatus) {
         switch (incomingCallData.callStatus) {
           case 'calling':
             navigation.navigate('IncomingCall', {data: incomingCallData});
@@ -87,7 +110,7 @@ const ChatScreen = ({navigation}: any) => {
 
       //run when getting incoming call is there but user is already in another call
       if (
-        isInCallAlready &&
+        (inCallStatus || isInCallAlready) &&
         anotherPersonCallingData?.callStatus === 'calling'
       ) {
         console.log('**another call**');
@@ -124,9 +147,11 @@ const ChatScreen = ({navigation}: any) => {
         }
       }
     });
+
     return () => {
       // Unsubscribe the listener when the component unmounts
       unsubscribe();
+      unsubscribe2();
     };
   }, []);
 

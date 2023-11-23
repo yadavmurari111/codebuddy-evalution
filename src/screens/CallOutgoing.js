@@ -32,7 +32,11 @@ import Mute from '../assets/incoming-call-assets/mute';
 import {useAuth} from '../AuthProvider';
 import {getToken} from '../VideoCallScreen';
 import {callEndPlay, callRingtonePlay, callRingtoneStop} from './CallDetails';
-import {deleteFirestoreCallData, putCallDataFirestore} from './callFunctions';
+import {
+  deleteFirestoreCallData,
+  putCallDataFirestore,
+  putCallerDataFirestore,
+} from './callFunctions';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -141,7 +145,7 @@ const CallOutGoing = ({navigation, route}) => {
         switch (snapshot?._data?.callStatus) {
           case 'connected':
             await navigateToCallDetail();
-            await putCallDataFirestore(recipient_uid, caller_uid);
+            await putCallerDataFirestore(recipient_uid, caller_uid);
             break;
         }
       }
