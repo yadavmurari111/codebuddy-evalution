@@ -202,7 +202,7 @@ const CallDetails = ({navigation, route}) => {
   // At the time of unmounting the component end call
   useEffect(() => {
     return () => {
-      // onEndButtonPress().then(() => console.log('call ended'));
+      onEndButtonPress().then(() => console.log('call ended'));
     };
   }, []);
 
@@ -221,6 +221,7 @@ const CallDetails = ({navigation, route}) => {
       .doc('incoming-call')
       .collection('calls')
       .doc(caller_uid);
+
     // Add a real-time listener to the root collection
     const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
       // Process the changes here
@@ -331,15 +332,15 @@ const CallDetails = ({navigation, route}) => {
           {callTimer !== null && (
             <ElapsedTimeInSeconds startTimestamp={callTimer} />
           )}
-          <Text
-            style={{
-              color: 'white',
-              fontWeight: '700',
-              fontSize: 20,
-              textAlign: 'center',
-            }}>
-            "{recipient_uid}" and "{caller_uid}" are in call !!
-          </Text>
+          {/*<Text*/}
+          {/*  style={{*/}
+          {/*    color: 'white',*/}
+          {/*    fontWeight: '700',*/}
+          {/*    fontSize: 16,*/}
+          {/*    textAlign: 'center',*/}
+          {/*  }}>*/}
+          {/*  "{recipient_uid}" and "{caller_uid}" are in call !!*/}
+          {/*</Text>*/}
 
           <Animated.View style={[{position: 'absolute', top: 0}]}>
             <SmallWindow animation={animation} isFriendMute={isFriendMute} />

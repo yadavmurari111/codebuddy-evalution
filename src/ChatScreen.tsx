@@ -12,7 +12,9 @@ import {useAuth} from './AuthProvider';
 import {
   deleteFirestoreCallData,
   putCallingDataFirestore,
+  updateCallDataFirestore,
 } from './screens/callFunctions';
+import {callEndPlay, callRingtoneStop} from './screens/CallDetails';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
@@ -44,15 +46,30 @@ const ChatScreen = ({navigation}: any) => {
   const showAnotherCallAlert = (anotherPersonCallingData: any) => {
     Alert.alert(
       'Incoming call from :' + anotherPersonCallingData.caller_uid,
-      'Please take an action , calling to: ' +
-        anotherPersonCallingData.recipient_uid,
+      'Recipient_uid: ' +
+        anotherPersonCallingData.recipient_uid +
+        '\n\n\nWarning: Initiating a new call will seamlessly hang up any ongoing call!',
       [
         {
           text: 'Accept',
           onPress: async () => {
-            navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
-            navigation.navigate('IncomingCall', {
-              data: anotherPersonCallingData,
+            navigation.goBack();
+            navigation.goBack();
+
+            // navigation.goBack();
+            //navigation.navigate('IncomingCall', {data: incomingCallData});
+
+            await updateCallDataFirestore(
+              'connected',
+              anotherPersonCallingData.recipient_uid,
+              anotherPersonCallingData.caller_uid,
+            ); // update firestore call status for friend == connecting
+
+            navigation.push(ROUTE_NAME.VIDEO_CALL_DETAIL, {
+              isCalling: false,
+              caller_uid: anotherPersonCallingData.caller_uid,
+              recipient_uid: anotherPersonCallingData.recipient_uid,
+              accessToken: anotherPersonCallingData.tokenToJoinRoom,
             });
           },
         },
@@ -115,10 +132,6 @@ const ChatScreen = ({navigation}: any) => {
             break;
         }
       }
-
-      // if (incomingCallData?.callStatus === undefined) {
-      //   navigation.navigate(ROUTE_NAME.CHAT_SCREEN); // navigate back from call detail screen to chat screen when call disconnected
-      // }
 
       //run when getting incoming call but user is already in another call
       if (isInCallAlreadyFlag && incomingCallData?.callStatus === 'calling') {

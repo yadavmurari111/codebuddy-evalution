@@ -169,7 +169,7 @@ const IncomingCall = ({navigation, route}) => {
       console.log('recipient_uid', 'caller_uid');
 
       if (snapshot._exists === false) {
-        navigation.goBack();
+        navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
       }
     });
 
