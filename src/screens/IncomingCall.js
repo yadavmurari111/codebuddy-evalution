@@ -204,8 +204,8 @@ const IncomingCall = ({navigation, route}) => {
         <View>
           <UserImage waveEnable={state} />
         </View>
-        <Text style={{fontSize: 20, color: 'white', fontWeight: '700'}}>
-          {recipient_uid} calling you..
+        <Text style={{fontSize: 16, color: 'white', fontWeight: '700'}}>
+          {caller_uid} calling you...
         </Text>
 
         <Animated.View

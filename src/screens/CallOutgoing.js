@@ -43,10 +43,6 @@ const ACTION_CONTAINER_HEIGHT = 90;
 const ACTION_CONTAINER_WIDTH = width - ACTION_CONTAINER_MARGIN_TOP * 2;
 
 const CallOutGoing = ({navigation, route}) => {
-  const {
-    user: {selfUid, friendUid},
-  } = useAuth();
-
   const {caller_uid, recipient_uid} = route.params || {};
 
   const animation = useSharedValue(0);
@@ -83,10 +79,10 @@ const CallOutGoing = ({navigation, route}) => {
 
   const navigateToCallDetail = async () => {
     console.log('call accepted by friend!');
-    setStatus('connected');
+    setIsCallAccepted(true);
     callRingtoneStop();
 
-    const roomName = 'room-' + caller_uid + '-' + friendUid;
+    const roomName = 'room-' + caller_uid + '-' + recipient_uid;
     const tokenForMe = await getToken(roomName, caller_uid); // caller_uid is self_uid
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_DETAIL, {
       isCalling: true,
@@ -96,7 +92,7 @@ const CallOutGoing = ({navigation, route}) => {
     });
   };
 
-  const [status, setStatus] = useState('disconnected');
+  const [isCallAccepted, setIsCallAccepted] = useState(false);
 
   // listener for friend's/recipient's actions (accepted /rejected etc)
   useEffect(() => {
@@ -117,6 +113,7 @@ const CallOutGoing = ({navigation, route}) => {
       if (snapshot?._data?.callStatus) {
         switch (snapshot?._data?.callStatus) {
           case 'connected':
+            setIsCallAccepted(true);
             await navigateToCallDetail();
             break;
         }
@@ -129,31 +126,40 @@ const CallOutGoing = ({navigation, route}) => {
     return () => {
       unsubscribe(); // Unsubscribe the listener when the component unmounts
     };
-  }, [friendUid]);
+  }, []);
 
   const onEndButtonPress = async () => {
     callRingtoneStop();
     callEndPlay();
-    clearTimeout(autoDisconnectTimeRef.current); // Clear the timer if the component unmounts before the timer expires
+
+    setIsCallAccepted(false);
 
     await deleteFirestoreCallData(recipient_uid, caller_uid);
-    setStatus('disconnected');
     navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
   };
 
-  const autoDisconnectTimeRef = useRef(null);
-
   useEffect(() => {
-    callRingtonePlay();
-    autoDisconnectTimeRef.current = setTimeout(async () => {
-      if (status === 'disconnected') {
-        // await onEndButtonPress(); // This code will run after a delay of 30 seconds (30000 milliseconds)
+    callRingtonePlay(); // Code to run on mount
+
+    const timeoutId = setTimeout(() => {
+      // Code to run after 30 seconds
+      if (isCallAccepted === false) {
+        // onEndButtonPress().then(() =>
+        //   console.log('user did not accepted call , disconnecting!'),
+        // );
       }
     }, 30000); // 30 seconds in milliseconds
 
     return () => {
-      clearTimeout(autoDisconnectTimeRef.current); // Clear the timer if the component unmounts before the timer expires
-      callRingtoneStop();
+      clearTimeout(timeoutId); // Cleanup function to clear the timeout if the component unmounts before the timeout
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      onEndButtonPress().then(() =>
+        console.log('user dismissed call: call outgoing!'),
+      );
     };
   }, []);
 
@@ -244,7 +250,7 @@ const CallOutGoing = ({navigation, route}) => {
               fontWeight: '700',
               color: 'white',
             }}>
-            {'Calling ' + friendUid + ' ...'}
+            {'Calling ' + recipient_uid + ' ...'}
           </Text>
 
           <Animated.View style={[{position: 'absolute', top: 0}]}>

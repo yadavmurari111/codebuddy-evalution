@@ -1,10 +1,9 @@
 import {
-  Alert,
   Dimensions,
   Image,
-  Text,
   StatusBar,
   StyleSheet,
+  Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -27,10 +26,8 @@ import {
   PanGestureHandler,
 } from 'react-native-gesture-handler';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
-import ROUTE_NAME from '../navigation/navigation-constants';
 import {TwilioVideo} from 'react-native-twilio-video-webrtc';
 import {firebase} from '@react-native-firebase/firestore';
-import Mute from '../assets/incoming-call-assets/mute';
 import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
 import Sound from 'react-native-sound';
@@ -44,16 +41,16 @@ const CallHangup = new Sound(callHangup);
 const CallRingtone = new Sound(callRingtone);
 
 export const callEndPlay = () => {
-  CallHangup.play(success => console.log(success));
+  CallHangup.play(() => console.log('call ended sound played!'));
 };
 
 export const callRingtonePlay = () => {
   console.log('callRingtonePlay!');
-  CallRingtone.play(success => console.log(success));
+  CallRingtone.play(() => console.log('call ringtone starts playing'));
 };
 
 export const callRingtoneStop = () => {
-  CallRingtone.stop(success => console.log(success));
+  CallRingtone.stop(() => console.log('call ringtone stopped'));
 };
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
@@ -133,9 +130,9 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onEndButtonPress = async () => {
-    if (status === 'disconnected') {
-      return;
-    }
+    // if (status === 'disconnected') {
+    //   return;
+    // }
 
     callEndPlay();
 
@@ -225,12 +222,13 @@ const CallDetails = ({navigation, route}) => {
   }, []);
 
   console.log('selfUid :  -', isCalling ? caller_uid : recipient_uid);
-
+  const selfUid = isCalling ? caller_uid : recipient_uid;
+  const friendUid = !isCalling ? caller_uid : recipient_uid;
   useEffect(() => {
     const db = firebase.firestore();
     const rootCollectionRef = db
       .collection('users')
-      .doc(isCalling ? caller_uid : recipient_uid) //self uid
+      .doc(selfUid) //self uid
       .collection('watchers')
       .doc('incoming-call')
       .collection('calls')
@@ -353,19 +351,17 @@ const CallDetails = ({navigation, route}) => {
           {status === 'connected' && (
             <ElapsedTimeInSeconds startTimestamp={callTimer} />
           )}
-          {status === 'disconnected' && <Text>connecting...</Text>}
-          {/*<Text*/}
-          {/*  style={{*/}
-          {/*    color: 'white',*/}
-          {/*    fontWeight: '700',*/}
-          {/*    fontSize: 16,*/}
-          {/*    textAlign: 'center',*/}
-          {/*  }}>*/}
-          {/*  "{recipient_uid}" and "{caller_uid}" are in call !!*/}
-          {/*</Text>*/}
-
+          {status === 'disconnected' && (
+            <Text style={{textAlign: 'center', color: 'white'}}>
+              connecting...
+            </Text>
+          )}
           <Animated.View style={[{position: 'absolute', top: 0}]}>
-            <SmallWindow animation={animation} isFriendMute={isFriendMute} />
+            <SmallWindow
+              animation={animation}
+              isFriendMute={isFriendMute}
+              friendUid={friendUid}
+            />
           </Animated.View>
         </View>
         <TwilioVideo
@@ -397,7 +393,7 @@ const POSITION_BOTTOM =
   StatusBar.currentHeight;
 const POSITION_TOP = 0;
 
-const SmallWindow = ({animation, isFriendMute}) => {
+const SmallWindow = ({animation, friendUid, isFriendMute}) => {
   const x = useSharedValue(0);
   const y = useSharedValue(0);
   const positionY = useSharedValue('bottom');
@@ -530,6 +526,9 @@ const SmallWindow = ({animation, isFriendMute}) => {
             color={'black'}
             size={18}
           />
+          <Text style={{fontWeight: 'bold', color: 'black', marginTop: 2}}>
+            {friendUid}
+          </Text>
         </Animated.View>
       </PanGestureHandler>
     </GestureHandlerRootView>

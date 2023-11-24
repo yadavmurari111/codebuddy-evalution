@@ -53,17 +53,15 @@ const ChatScreen = ({navigation}: any) => {
         {
           text: 'Accept',
           onPress: async () => {
+            //navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+            //navigation.pop(2);
             navigation.goBack();
             navigation.goBack();
-
-            // navigation.goBack();
-            //navigation.navigate('IncomingCall', {data: incomingCallData});
-
             await updateCallDataFirestore(
               'connected',
               anotherPersonCallingData.recipient_uid,
               anotherPersonCallingData.caller_uid,
-            ); // update firestore call status for friend == connecting
+            );
 
             navigation.push(ROUTE_NAME.VIDEO_CALL_DETAIL, {
               isCalling: false,
@@ -136,8 +134,7 @@ const ChatScreen = ({navigation}: any) => {
       //run when getting incoming call but user is already in another call
       if (isInCallAlreadyFlag && incomingCallData?.callStatus === 'calling') {
         console.log('**another incoming call**');
-        console.log(incomingCallData);
-        console.log('--anotherPersonCallingData--');
+        console.log('--anotherPersonCallingData--', incomingCallData);
 
         showAnotherCallAlert(incomingCallData);
       }
