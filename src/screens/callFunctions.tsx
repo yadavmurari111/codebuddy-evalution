@@ -143,9 +143,38 @@ export const updateAlreadyInCallStatus = async (
   await collectionRef
     .set(sendData)
     .then(() => {
-      console.log('Data added successfully!');
+      console.log('isInCall Data updated successfully!');
     })
     .catch(error => {
       console.error('Error adding data: ', error);
     });
+};
+
+export const updateMuteStatusToFirestore = async (
+  muteStatus: boolean,
+  isCalling: boolean,
+  recipient_uid: string,
+  caller_uid: string,
+) => {
+  const updateCallerMuteData = {
+    isCallerMute: muteStatus,
+  };
+  const updateRecipientMuteData = {
+    isRecipientMute: muteStatus,
+  };
+  const updateData = isCalling ? updateCallerMuteData : updateRecipientMuteData;
+  const collectionRef = db
+    .collection('users')
+    .doc(recipient_uid)
+    .collection('watchers')
+    .doc('incoming-call')
+    .collection('calls')
+    .doc(caller_uid);
+
+  try {
+    await collectionRef.update(updateData);
+    console.log('Call Mute status updated successfully!');
+  } catch (error) {
+    console.error('Error updating call status: ', error);
+  }
 };

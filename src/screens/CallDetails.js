@@ -35,8 +35,10 @@ import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
 import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
 import Sound from 'react-native-sound';
 import ElapsedTimeInSeconds from './callTimer';
-import {deleteFirestoreCallData} from './callFunctions';
-import {useIsFocused} from '@react-navigation/native';
+import {
+  deleteFirestoreCallData,
+  updateMuteStatusToFirestore,
+} from './callFunctions';
 
 const CallHangup = new Sound(callHangup);
 const CallRingtone = new Sound(callRingtone);
@@ -131,15 +133,15 @@ const CallDetails = ({navigation, route}) => {
   };
 
   const onEndButtonPress = async () => {
-    // if (status === 'disconnected') {
-    //   return;
-    // }
+    if (status === 'disconnected') {
+      return;
+    }
 
     callEndPlay();
 
     twilioRef.current.disconnect();
     await deleteFirestoreCallData(recipient_uid, caller_uid);
-    //setStatus('disconnected');
+    setStatus('disconnected');
     // navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
   };
 
@@ -149,40 +151,18 @@ const CallDetails = ({navigation, route}) => {
       .setLocalAudioEnabled(!isAudioEnabled)
       .then(async isEnabled => {
         setIsAudioEnabled(isEnabled);
-        await updateMuteStatusToFirestore(!isEnabled);
+        await updateMuteStatusToFirestore(
+          !isEnabled,
+          isCalling,
+          recipient_uid,
+          caller_uid,
+        );
       });
   };
 
   const toggleSoundSetup = () => {
     setIsSpeakerMode(!isSpeakerMode);
     twilioRef.current.toggleSoundSetup(isSpeakerMode);
-  };
-
-  const updateMuteStatusToFirestore = async muteStatus => {
-    const db = firebase.firestore();
-    const updateCallerMuteData = {
-      isCallerMute: muteStatus,
-    };
-    const updateRecipientMuteData = {
-      isRecipientMute: muteStatus,
-    };
-    const updateData = isCalling
-      ? updateCallerMuteData
-      : updateRecipientMuteData;
-    const collectionRef = db
-      .collection('users')
-      .doc(recipient_uid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc(caller_uid);
-
-    try {
-      await collectionRef.update(updateData);
-      console.log('Call Mute status updated successfully!');
-    } catch (error) {
-      console.error('Error updating call status: ', error);
-    }
   };
 
   const onConnectTwilio = token => {
@@ -228,7 +208,7 @@ const CallDetails = ({navigation, route}) => {
       console.log(snapshot, '--snapshot data-- in detail screen');
 
       if (snapshot._exists === false) {
-        await onEndButtonPress();
+        return;
       }
 
       setCallTimer(snapshot._data.callConnectedTime);
@@ -238,6 +218,31 @@ const CallDetails = ({navigation, route}) => {
           ? snapshot._data.isCallerMute
           : snapshot._data.isRecipientMute,
       );
+    });
+    return () => {
+      unsubscribe(); // Unsubscribe the listener when the component unmounts
+    };
+  }, []);
+
+  console.log('selfUid :  -', isCalling ? caller_uid : recipient_uid);
+
+  useEffect(() => {
+    const db = firebase.firestore();
+    const rootCollectionRef = db
+      .collection('users')
+      .doc(isCalling ? caller_uid : recipient_uid) //self uid
+      .collection('watchers')
+      .doc('incoming-call')
+      .collection('calls')
+      .doc('isInCall');
+
+    // Add a real-time listener to the root collection
+    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
+      const isInCallFlag = snapshot?._data?.inCall;
+
+      if (isInCallFlag === false) {
+        await onEndButtonPress();
+      }
     });
     return () => {
       unsubscribe(); // Unsubscribe the listener when the component unmounts
@@ -276,18 +281,34 @@ const CallDetails = ({navigation, route}) => {
             animatedStyleTop,
           ]}>
           <UserImage width={70} height={70} />
-          <View
+          {/*<View*/}
+          {/*  style={{*/}
+          {/*    width: 70,*/}
+          {/*    height: 70,*/}
+          {/*    borderRadius: 50,*/}
+          {/*    backgroundColor: '#eee',*/}
+          {/*    justifyContent: 'center',*/}
+          {/*    alignItems: 'center',*/}
+          {/*  }}>*/}
+          {/*  <Mute muteButtonHandler={onMuteButtonPress} />*/}
+          {/*  /!*<AntDesignIcons name={'mic'} color={'black'} size={30} />*!/*/}
+          {/*</View>*/}
+          <TouchableOpacity
+            onPress={onMuteButtonPress}
             style={{
               width: 70,
               height: 70,
               borderRadius: 50,
-              backgroundColor: '#eee',
+              backgroundColor: isAudioEnabled ? '#eee' : 'grey',
               justifyContent: 'center',
               alignItems: 'center',
             }}>
-            <Mute muteButtonHandler={onMuteButtonPress} />
-            {/*<AntDesignIcons name={'mic'} color={'black'} size={30} />*/}
-          </View>
+            <AntDesignIcons
+              size={40}
+              name={isAudioEnabled ? 'mic' : 'mic-off'}
+              color={isAudioEnabled ? 'grey' : 'lightgrey'}
+            />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={toggleSoundSetup}
             style={{
@@ -305,7 +326,7 @@ const CallDetails = ({navigation, route}) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => navigation.navigate(ROUTE_NAME.CHAT_SCREEN)} // on end
+            onPress={() => onEndButtonPress()} // on end
             style={{
               width: 70,
               height: 70,
@@ -329,9 +350,10 @@ const CallDetails = ({navigation, route}) => {
           </TouchableOpacity>
         </Animated.View>
         <View style={{flex: 1, justifyContent: 'center'}}>
-          {callTimer !== null && (
+          {status === 'connected' && (
             <ElapsedTimeInSeconds startTimestamp={callTimer} />
           )}
+          {status === 'disconnected' && <Text>connecting...</Text>}
           {/*<Text*/}
           {/*  style={{*/}
           {/*    color: 'white',*/}
