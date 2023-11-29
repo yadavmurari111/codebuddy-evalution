@@ -8,7 +8,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {SharedElement} from 'react-navigation-shared-element';
 import {UserImage} from './IncomingCall';
 import Animated, {
@@ -28,10 +28,13 @@ import {
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import ROUTE_NAME from '../navigation/navigation-constants';
 import {firebase} from '@react-native-firebase/firestore';
-import Mute from '../assets/incoming-call-assets/mute';
-import {useAuth} from '../AuthProvider';
-import {callEndPlay, callRingtonePlay, callRingtoneStop} from './CallDetails';
-import {deleteFirestoreCallData, getToken} from './callFunctions';
+import {
+  callEndPlay,
+  callRingtonePlay,
+  callRingtoneStop,
+  deleteFirestoreCallData,
+  getToken,
+} from './CallFunctions';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -135,31 +138,35 @@ const CallOutGoing = ({navigation, route}) => {
     setIsCallAccepted(false);
 
     await deleteFirestoreCallData(recipient_uid, caller_uid);
-    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+    navigation.goBack();
   };
+
+  const [timer, setTimer] = useState(0);
 
   useEffect(() => {
     callRingtonePlay(); // Code to run on mount
 
-    const timeoutId = setTimeout(() => {
-      // Code to run after 30 seconds
-      if (isCallAccepted === false) {
-        // onEndButtonPress().then(() =>
-        //   console.log('user did not accepted call , disconnecting!'),
-        // );
-      }
-    }, 30000); // 30 seconds in milliseconds
-
-    return () => {
-      clearTimeout(timeoutId); // Cleanup function to clear the timeout if the component unmounts before the timeout
+    const startTimer = () => {
+      const intervalId = setInterval(() => {}, 1000);
+      setTimer(intervalId); // Save the interval ID in state to clear it later
     };
+    startTimer(); // Call the startTimer function
+
+    if (timer > 30) {
+      clearInterval(timer);
+      onEndButtonPress().then(() =>
+        console.log('user dismissed call: call outgoing!'),
+      );
+    }
   }, []);
 
   useEffect(() => {
     return () => {
+      console.log('===here we go outside the component-------->');
       onEndButtonPress().then(() =>
         console.log('user dismissed call: call outgoing!'),
       );
+      clearInterval(timer); // Cleanup function to clear the timeout if the component unmounts before the timeout
     };
   }, []);
 
@@ -168,7 +175,7 @@ const CallOutGoing = ({navigation, route}) => {
       <View style={styles.container}>
         <SharedElement id="callContainer" style={StyleSheet.absoluteFill}>
           <Image
-            source={require('../../src/assets/incoming-call-assets/ss.png')}
+            source={require('./call-assets/ss.png')}
             style={[
               StyleSheet.absoluteFillObject,
               {width: '100%', height: '100%', tintColor: '#78558f'},
@@ -194,7 +201,7 @@ const CallOutGoing = ({navigation, route}) => {
             animatedStyleTop,
           ]}>
           <UserImage width={70} height={70} />
-          <View
+          <TouchableOpacity
             style={{
               width: 70,
               height: 70,
@@ -203,9 +210,8 @@ const CallOutGoing = ({navigation, route}) => {
               justifyContent: 'center',
               alignItems: 'center',
             }}>
-            <Mute muteButtonHandler={() => {}} />
-            {/*<AntDesignIcons name={'mic'} color={'black'} size={30} />*/}
-          </View>
+            <AntDesignIcons size={40} name={'mic'} color={'grey'} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={{
               width: 70,
@@ -228,7 +234,7 @@ const CallOutGoing = ({navigation, route}) => {
               alignItems: 'center',
             }}>
             <Image
-              source={require('../../src/assets/incoming-call-assets/call.png')}
+              source={require('./call-assets/call.png')}
               style={[
                 {
                   width: 30,
@@ -399,7 +405,7 @@ const SmallWindow = ({animation}) => {
           style={[styles.smallWindow, animatedStyle]}>
           <Image
             //source={require('../../assets/test_avatar.png')}
-            source={require('../../src/assets/incoming-call-assets/test_avatar.png')}
+            source={require('./call-assets/test_avatar.png')}
             style={{
               width: SMALL_WINDOW_WIDTH * 0.5,
               height: SMALL_WINDOW_WIDTH * 0.5,

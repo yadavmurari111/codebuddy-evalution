@@ -1,6 +1,25 @@
 import {firebase} from '@react-native-firebase/firestore';
 import axios from 'axios';
 import {Alert} from 'react-native';
+import Sound from 'react-native-sound';
+import callHangup from './call-assets/call-hang-up.mp3';
+import callRingtone from './call-assets/call-ringtone.mp3';
+
+const CallHangup = new Sound(callHangup);
+const CallRingtone = new Sound(callRingtone);
+
+export const callEndPlay = () => {
+  CallHangup.play(() => console.log('call ended sound played!'));
+};
+
+export const callRingtonePlay = () => {
+  console.log('callRingtonePlay!');
+  CallRingtone.play(() => console.log('call ringtone starts playing'));
+};
+
+export const callRingtoneStop = () => {
+  CallRingtone.stop(() => console.log('call ringtone stopped'));
+};
 
 // Get a reference to the Firestore database
 const db = firebase.firestore();
@@ -137,7 +156,7 @@ export const updateAlreadyInCallStatus = async (
     .collection('watchers')
     .doc('incoming-call')
     .collection('calls')
-    .doc('isInCall'); // caller uid
+    .doc('isInCall');
 
   // Add data to the document within the collection
   await collectionRef

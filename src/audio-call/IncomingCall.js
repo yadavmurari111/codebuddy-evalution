@@ -21,13 +21,13 @@ import {SharedElement} from 'react-navigation-shared-element';
 import {useIsFocused} from '@react-navigation/native';
 import {animationRef} from '../../App';
 import Sound from 'react-native-sound';
-import callRingtone from '../assets/incoming-call-assets/ringtone.mp3';
-import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
+import callRingtone from './call-assets/ringtone.mp3';
+import callHangup from './call-assets/call-hang-up.mp3';
 import ROUTE_NAME from '../navigation/navigation-constants';
 import {
   deleteFirestoreCallData,
   updateCallDataFirestore,
-} from './callFunctions';
+} from './CallFunctions';
 import {firebase} from '@react-native-firebase/firestore';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
@@ -193,7 +193,7 @@ const IncomingCall = ({navigation, route}) => {
         }}>
         <SharedElement id="callContainer" style={StyleSheet.absoluteFill}>
           <Image
-            source={require('../../src/assets/incoming-call-assets/ss.png')}
+            source={require('./call-assets/ss.png')}
             style={[
               StyleSheet.absoluteFillObject,
               {width: '100%', height: '100%', tintColor: '#78558f'},
@@ -244,7 +244,7 @@ const IncomingCall = ({navigation, route}) => {
                 ]}
                 onPress={onNavigate}>
                 <Image
-                  source={require('../../src/assets/incoming-call-assets/call.png')}
+                  source={require('./call-assets/call.png')}
                   style={styles.call}
                   resizeMode="contain"
                 />
@@ -267,7 +267,7 @@ const IncomingCall = ({navigation, route}) => {
                   },
                 ]}>
                 <Image
-                  source={require('../../src/assets/incoming-call-assets/close.png')}
+                  source={require('./call-assets/close.png')}
                   style={{tintColor: 'gray', width: 20, height: 20}}
                   resizeMode="contain"
                 />
@@ -312,7 +312,7 @@ export const UserImage = ({waveEnable = false, width, height}) => {
             backgroundColor: '#ccc',
           }}
           //source={require('../../assets/test_avatar.png')}
-          source={require('../../src/assets/incoming-call-assets/test_avatar.png')}
+          source={require('./call-assets/test_avatar.png')}
           // source={{
           //   uri: 'https://dyl347hiwv3ct.cloudfront.net/app/uploads/2023/09/img-favicon.png',
           // }}

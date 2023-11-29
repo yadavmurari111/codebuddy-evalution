@@ -28,30 +28,12 @@ import {
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import {TwilioVideo} from 'react-native-twilio-video-webrtc';
 import {firebase} from '@react-native-firebase/firestore';
-import callHangup from '../assets/incoming-call-assets/call-hang-up.mp3';
-import callRingtone from '../assets/incoming-call-assets/call-ringtone.mp3';
-import Sound from 'react-native-sound';
 import ElapsedTimeInSeconds from './callTimer';
 import {
+  callEndPlay,
   deleteFirestoreCallData,
   updateMuteStatusToFirestore,
-} from './callFunctions';
-
-const CallHangup = new Sound(callHangup);
-const CallRingtone = new Sound(callRingtone);
-
-export const callEndPlay = () => {
-  CallHangup.play(() => console.log('call ended sound played!'));
-};
-
-export const callRingtonePlay = () => {
-  console.log('callRingtonePlay!');
-  CallRingtone.play(() => console.log('call ringtone starts playing'));
-};
-
-export const callRingtoneStop = () => {
-  CallRingtone.stop(() => console.log('call ringtone stopped'));
-};
+} from './CallFunctions';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -166,9 +148,8 @@ const CallDetails = ({navigation, route}) => {
     twilioRef.current.connect({
       accessToken: token,
       enableVideo: false,
+      enableAudio: true,
     });
-    // Alert.alert('' + token);
-    setStatus('connected');
   };
 
   // connect call to Twilio room
@@ -252,7 +233,7 @@ const CallDetails = ({navigation, route}) => {
       <View style={styles.container}>
         <SharedElement id="callContainer" style={StyleSheet.absoluteFill}>
           <Image
-            source={require('../../src/assets/incoming-call-assets/ss.png')}
+            source={require('./call-assets/ss.png')}
             style={[
               StyleSheet.absoluteFillObject,
               {width: '100%', height: '100%', tintColor: '#78558f'},
@@ -279,18 +260,6 @@ const CallDetails = ({navigation, route}) => {
             animatedStyleTop,
           ]}>
           <UserImage width={70} height={70} />
-          {/*<View*/}
-          {/*  style={{*/}
-          {/*    width: 70,*/}
-          {/*    height: 70,*/}
-          {/*    borderRadius: 50,*/}
-          {/*    backgroundColor: '#eee',*/}
-          {/*    justifyContent: 'center',*/}
-          {/*    alignItems: 'center',*/}
-          {/*  }}>*/}
-          {/*  <Mute muteButtonHandler={onMuteButtonPress} />*/}
-          {/*  /!*<AntDesignIcons name={'mic'} color={'black'} size={30} />*!/*/}
-          {/*</View>*/}
           <TouchableOpacity
             onPress={onMuteButtonPress}
             style={{
@@ -334,7 +303,7 @@ const CallDetails = ({navigation, route}) => {
               alignItems: 'center',
             }}>
             <Image
-              source={require('../../src/assets/incoming-call-assets/call.png')}
+              source={require('./call-assets/call.png')}
               style={[
                 {
                   width: 30,
@@ -511,7 +480,7 @@ const SmallWindow = ({animation, friendUid, isFriendMute}) => {
           entering={FadeIn.delay(500)}
           style={[styles.smallWindow, animatedStyle]}>
           <Image
-            source={require('../../src/assets/incoming-call-assets/test_avatar.png')}
+            source={require('./call-assets/test_avatar.png')}
             style={{
               width: SMALL_WINDOW_WIDTH * 0.5,
               height: SMALL_WINDOW_WIDTH * 0.5,

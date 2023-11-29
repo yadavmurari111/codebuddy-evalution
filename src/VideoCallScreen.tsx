@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import {presetBase} from './utils/color';
-import call from '../src/assets/incoming-call-assets/ringtone.mp3';
+import call from './audio-call/incoming-call-assets/ringtone.mp3';
 
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';

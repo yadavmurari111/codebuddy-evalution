@@ -8,9 +8,9 @@ import SendVideoComponent from '../components/send-video/send-video.component';
 import FullscreenVideoPlayer from '../components/video-player/fullscreen-video-player.component';
 import VideoCallScreen from '../VideoCallScreen';
 import {createSharedElementStackNavigator} from 'react-navigation-shared-element';
-import IncomingCall from '../screens/IncomingCall';
 import {CardStyleInterpolators, TransitionSpecs} from '@react-navigation/stack';
-import CallDetails from '../screens/CallDetails';
+import IncomingCall from '../audio-call/IncomingCall';
+import CallDetails from '../audio-call/CallDetails';
 
 const Stack = createNativeStackNavigator();
 

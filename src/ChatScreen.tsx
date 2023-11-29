@@ -13,8 +13,7 @@ import {
   deleteFirestoreCallData,
   putCallingDataFirestore,
   updateCallDataFirestore,
-} from './screens/callFunctions';
-import {callEndPlay, callRingtoneStop} from './screens/CallDetails';
+} from './audio-call/CallFunctions';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
