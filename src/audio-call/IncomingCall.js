@@ -21,14 +21,17 @@ import {SharedElement} from 'react-navigation-shared-element';
 import {useIsFocused} from '@react-navigation/native';
 import {animationRef} from '../../App';
 import Sound from 'react-native-sound';
-import callRingtone from './call-assets/ringtone.mp3';
 import callHangup from './call-assets/call-hang-up.mp3';
 import ROUTE_NAME from '../navigation/navigation-constants';
 import {
+  callEndedSoundPlay,
   deleteFirestoreCallData,
+  IncomingCallRingtonePlay,
+  IncomingCallRingtoneStop,
   updateCallDataFirestore,
 } from './CallFunctions';
-import {firebase} from '@react-native-firebase/firestore';
+import database from '@react-native-firebase/database';
+import {useAuth} from '../AuthProvider';
 
 const AnimatedTouch = Animated.createAnimatedComponent(TouchableOpacity);
 const {width, height} = Dimensions.get('window');
@@ -42,39 +45,29 @@ const ACTION_BUTTON_HEIGHT = 50;
 const DURATION = 2000;
 
 const CallHangup = new Sound(callHangup);
-const CallRingtone = new Sound(callRingtone);
-
-const callEndPlay = () => {
-  CallHangup.play(success => console.log(success));
-};
-
-const callRingtonePlay = () => {
-  console.log('callRingtonePlay!');
-  CallRingtone.play(success => console.log(success));
-};
-
-const callRingtoneStop = () => {
-  CallRingtone.stop(success => console.log(success));
-};
 
 const IncomingCall = ({navigation, route}) => {
   const {
     data: {tokenToJoinRoom, caller_uid, recipient_uid},
   } = route.params || {};
 
+  const {
+    user: {chat_id},
+  } = useAuth();
+
   const [state, setstate] = useState(true);
   const [state2, setStateAccept] = useState(true);
 
   useEffect(() => {
-    callRingtonePlay();
+    IncomingCallRingtonePlay();
   }, []);
 
   const onNavigate = async () => {
     // Object.keys(animationRef.current).forEach((key) => {
     //     cancelAnimation(animationRef.current[key])
     // })
-    callRingtoneStop();
-    await updateCallDataFirestore('connected', recipient_uid, caller_uid); // update firestore call status for friend == connecting
+    IncomingCallRingtoneStop();
+    updateCallDataFirestore(chat_id, recipient_uid, caller_uid); // update firestore call status for friend == connecting
 
     setstate(false);
     acceptAnimatedValue.value = withTiming(1, {duration: 500}, () => {
@@ -102,16 +95,17 @@ const IncomingCall = ({navigation, route}) => {
 
   const focused = useIsFocused();
 
-  const onReject = async () => {
-    callRingtoneStop();
-    callEndPlay();
-    await deleteFirestoreCallData(recipient_uid, caller_uid);
+  const onReject = () => {
+    IncomingCallRingtoneStop();
+    callEndedSoundPlay();
+    deleteFirestoreCallData(chat_id, recipient_uid, caller_uid);
+    console.log('user dismissed call!');
   };
 
   // run at the time of unmounting
   useEffect(() => {
     return () => {
-      onReject().then(() => console.log('user dismissed call!')); // when user swipe down incoming screen trigger this
+      onReject(); // when user swipe down incoming screen trigger this
     };
   }, []);
 
@@ -142,39 +136,21 @@ const IncomingCall = ({navigation, route}) => {
     };
   });
 
-  const animatedStyleReject = useAnimatedStyle(() => {
-    return {
-      width: interpolate(
-        rejectAnimatedValue.value,
-        [0, 1],
-        [ACTION_BUTTON_WIDTH, ACTION_CONTAINER_B_WIDTH],
-      ),
-    };
-  });
-
   useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(recipient_uid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc(caller_uid);
+    const databaseRef = database().ref(
+      `chat/${chat_id}/watchers/${recipient_uid}/incoming-call/caller/${caller_uid}`,
+    );
 
     // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-      console.log(snapshot, '***************************');
-      console.log(recipient_uid, caller_uid);
-      console.log('recipient_uid', 'caller_uid');
-
-      if (snapshot._exists === false) {
+    const onValueChange = databaseRef.on('value', async snapshot => {
+      const newData = snapshot.val();
+      if (newData === null) {
         navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
       }
     });
 
     return () => {
-      unsubscribe(); // Unsubscribe the listener when the component unmounts
+      databaseRef.off('value', onValueChange);
     };
   }, []);
 

@@ -7,13 +7,14 @@ import {presetBase} from './utils/color';
 import SendVideoComponent from './components/send-video/send-video.component';
 import VideoPlayerComponent from './components/video-player/video-player.component';
 import RecordAudioComponent from './components/record-audio/record-audio.component';
-import {firebase} from '@react-native-firebase/firestore';
 import {useAuth} from './AuthProvider';
 import {
   deleteFirestoreCallData,
-  putCallingDataFirestore,
+  ICallData,
+  setCallingData,
   updateCallDataFirestore,
 } from './audio-call/CallFunctions';
+import database from '@react-native-firebase/database';
 
 const ChatScreen = ({navigation}: any) => {
   const sampleuri1 = 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4';
@@ -22,7 +23,7 @@ const ChatScreen = ({navigation}: any) => {
   const [videoUrl, setVideoUrl] = useState<string>(sampleuri1);
 
   const {
-    user: {selfUid, friendUid},
+    user: {selfUid, chat_id, friendUid},
   } = useAuth();
 
   const navigateToSettings = () => {
@@ -56,8 +57,8 @@ const ChatScreen = ({navigation}: any) => {
             //navigation.pop(2);
             navigation.goBack();
             navigation.goBack();
-            await updateCallDataFirestore(
-              'connected',
+            updateCallDataFirestore(
+              chat_id,
               anotherPersonCallingData.recipient_uid,
               anotherPersonCallingData.caller_uid,
             );
@@ -74,6 +75,7 @@ const ChatScreen = ({navigation}: any) => {
           text: 'reject',
           onPress: async () => {
             await deleteFirestoreCallData(
+              chat_id,
               anotherPersonCallingData.recipient_uid,
               anotherPersonCallingData.caller_uid,
             );
@@ -83,69 +85,66 @@ const ChatScreen = ({navigation}: any) => {
     );
   };
 
-  // this listener for incoming calls (move it to Navigation container level)
   useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(selfUid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls');
+    const databaseRef = database().ref(
+      `chat/${chat_id}/watchers/${selfUid}/incoming-call/caller`,
+    );
 
-    const isInCallRef = db
-      .collection('users')
-      .doc(selfUid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc('isInCall'); // caller uid
+    const isInCallRef = database().ref(
+      `users/${selfUid}/watchers/incoming-call/caller/isInCall/inCall`,
+    );
 
-    // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(async (snapshot: any) => {
-      if (snapshot._exists === false) {
-        return;
+    // Handle real-time updates here
+    const onValueChange = databaseRef.on('value', async snapshot => {
+      const newData = snapshot.val();
+      const isInCallAlreadyData = await isInCallRef.once('value');
+      const isInCallAlreadyFlag = isInCallAlreadyData?._snapshot?.value;
+
+      console.log(isInCallAlreadyFlag, '--isInCallAlready-Flag--');
+      console.log(JSON.stringify(newData), '---new data from RTDB---');
+
+      const currentTime = new Date().getTime();
+      const callData = Object.values(newData)[0] as ICallData;
+      console.log(
+        JSON.stringify(callData),
+        '---incomingCallData to be interacted---',
+      );
+
+      for (const key1 of Object.keys(newData).filter(
+        key => currentTime - newData[key].callTime > 60 * 1000,
+      )) {
+        await deleteFirestoreCallData(
+          chat_id,
+          newData[key1].recipient_uid,
+          newData[key1].caller_uid,
+        );
       }
 
-      const callDataArray = snapshot?._docs;
-      const isInCallAlreadyData = await isInCallRef.get();
-      const isInCallAlreadyFlag = isInCallAlreadyData?._data?.inCall;
-
-      console.log(isInCallAlreadyFlag, '***isInCallAlreadyFlag***');
-      console.log(snapshot, '----snapshot data----');
-      console.log(snapshot?._docs, '--***doc***--');
-
-      const callingData = callDataArray.filter(
-        (doc: any) => doc.data().callStatus === 'calling',
-      );
-      const incomingCallData = callingData[0]?._data;
-
-      if (incomingCallData?.callStatus && !isInCallAlreadyFlag) {
-        switch (incomingCallData.callStatus) {
-          case 'calling':
-            navigation.navigate('IncomingCall', {data: incomingCallData});
-            break;
-          default:
-            break;
-        }
+      if (callData.callStatus === 'calling' && !isInCallAlreadyFlag) {
+        console.log(
+          JSON.stringify(callData),
+          '---incomingCallData to be interacted---',
+        );
+        navigation.navigate('IncomingCall', {data: callData});
       }
 
       //run when getting incoming call but user is already in another call
-      if (isInCallAlreadyFlag && incomingCallData?.callStatus === 'calling') {
+      if (isInCallAlreadyFlag && callData.callStatus === 'calling') {
         console.log('**another incoming call**');
-        console.log('--anotherPersonCallingData--', incomingCallData);
+        console.log('--anotherPersonCallingData--', callData);
 
-        showAnotherCallAlert(incomingCallData);
+        showAnotherCallAlert(callData);
       }
     });
 
+    // Cleanup the listener when the component unmounts
     return () => {
-      unsubscribe(); // Unsubscribe the listener when the component unmounts
+      databaseRef.off('value', onValueChange);
     };
-  }, []);
+  }, []); // Empty dependency array means this effect runs only on mount and unmount
 
   const makeCallRequest = async () => {
-    await putCallingDataFirestore(selfUid, friendUid);
+    await setCallingData(chat_id, selfUid, friendUid);
     navigation.navigate(ROUTE_NAME.VIDEO_CALL_OUTGOING, {
       caller_uid: selfUid,
       recipient_uid: friendUid,

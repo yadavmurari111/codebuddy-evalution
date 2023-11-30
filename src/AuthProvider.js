@@ -110,6 +110,7 @@ const formatUser = user => {
   return {
     uid: user.uid,
     email: user.email,
+    chat_id: 'chat-murari-akram',
     selfUid: user.email === 'fitmurari@gmail.com' ? 'murari' : 'akram',
     friendUid: user.email !== 'fitmurari@gmail.com' ? 'murari' : 'akram',
     // name: user.displayName,

@@ -27,14 +27,15 @@ import {
 } from 'react-native-gesture-handler';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import ROUTE_NAME from '../navigation/navigation-constants';
-import {firebase} from '@react-native-firebase/firestore';
 import {
-  callEndPlay,
-  callRingtonePlay,
-  callRingtoneStop,
+  callEndedSoundPlay,
   deleteFirestoreCallData,
   getToken,
+  OutgoingCallRingtonePlay,
+  OutgoingCallRingtoneStop,
 } from './CallFunctions';
+import database from '@react-native-firebase/database';
+import {useAuth} from '../AuthProvider';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -82,8 +83,7 @@ const CallOutGoing = ({navigation, route}) => {
 
   const navigateToCallDetail = async () => {
     console.log('call accepted by friend!');
-    setIsCallAccepted(true);
-    callRingtoneStop();
+    OutgoingCallRingtoneStop();
 
     const roomName = 'room-' + caller_uid + '-' + recipient_uid;
     const tokenForMe = await getToken(roomName, caller_uid); // caller_uid is self_uid
@@ -95,78 +95,54 @@ const CallOutGoing = ({navigation, route}) => {
     });
   };
 
-  const [isCallAccepted, setIsCallAccepted] = useState(false);
+  const [isCallEnded, setIsCallEnded] = useState(false);
 
-  // listener for friend's/recipient's actions (accepted /rejected etc)
+  const {
+    user: {chat_id},
+  } = useAuth();
+
   useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(recipient_uid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc(caller_uid);
-
-    // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-      console.log(snapshot);
-      console.log(recipient_uid, caller_uid);
-      console.log('recipient_uid', 'caller_uid');
-      if (snapshot?._data?.callStatus) {
-        switch (snapshot?._data?.callStatus) {
-          case 'connected':
-            setIsCallAccepted(true);
-            await navigateToCallDetail();
-            break;
-        }
+    const databaseRef = database().ref(
+      `chat/${chat_id}/watchers/${recipient_uid}/incoming-call/caller/${caller_uid}`,
+    );
+    // Handle real-time updates here
+    const onValueChange = databaseRef.on('value', async snapshot => {
+      const newData = snapshot.val();
+      console.log(newData, '--data in call outgoing--');
+      if (newData === null) {
+        onEndButtonPress();
       }
-      if (snapshot._exists === false) {
-        await onEndButtonPress();
+
+      if (newData.callStatus === 'connected') {
+        await navigateToCallDetail();
       }
     });
 
+    // Cleanup the listener when the component unmounts
     return () => {
-      unsubscribe(); // Unsubscribe the listener when the component unmounts
+      databaseRef.off('value', onValueChange);
     };
-  }, []);
+  }, []); // Empty dependency array means this effect runs only on mount and unmount
 
-  const onEndButtonPress = async () => {
-    callRingtoneStop();
-    callEndPlay();
+  const onEndButtonPress = () => {
+    if (isCallEnded) {
+      return;
+    }
+    OutgoingCallRingtoneStop();
+    callEndedSoundPlay();
 
-    setIsCallAccepted(false);
-
-    await deleteFirestoreCallData(recipient_uid, caller_uid);
-    navigation.goBack();
+    deleteFirestoreCallData(chat_id, recipient_uid, caller_uid);
+    setIsCallEnded(true);
+    console.log('call ended: call outgoing!');
+    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
   };
 
-  const [timer, setTimer] = useState(0);
-
   useEffect(() => {
-    callRingtonePlay(); // Code to run on mount
+    OutgoingCallRingtonePlay(); // Code to run on mount
 
-    const startTimer = () => {
-      const intervalId = setInterval(() => {}, 1000);
-      setTimer(intervalId); // Save the interval ID in state to clear it later
-    };
-    startTimer(); // Call the startTimer function
-
-    if (timer > 30) {
-      clearInterval(timer);
-      onEndButtonPress().then(() =>
-        console.log('user dismissed call: call outgoing!'),
-      );
-    }
-  }, []);
-
-  useEffect(() => {
     return () => {
-      console.log('===here we go outside the component-------->');
-      onEndButtonPress().then(() =>
-        console.log('user dismissed call: call outgoing!'),
-      );
-      clearInterval(timer); // Cleanup function to clear the timeout if the component unmounts before the timeout
+      console.log('----here we go outside the component----');
+      onEndButtonPress();
     };
   }, []);
 

@@ -27,13 +27,15 @@ import {
 } from 'react-native-gesture-handler';
 import AntDesignIcons from 'react-native-vector-icons/Ionicons';
 import {TwilioVideo} from 'react-native-twilio-video-webrtc';
-import {firebase} from '@react-native-firebase/firestore';
 import ElapsedTimeInSeconds from './callTimer';
 import {
-  callEndPlay,
+  callEndedSoundPlay,
   deleteFirestoreCallData,
   updateMuteStatusToFirestore,
 } from './CallFunctions';
+import {useAuth} from '../AuthProvider';
+import ROUTE_NAME from '../navigation/navigation-constants';
+import database from '@react-native-firebase/database';
 
 const AnimatedTouchableWithoutFeedback = Animated.createAnimatedComponent(
   TouchableWithoutFeedback,
@@ -47,9 +49,6 @@ const ACTION_CONTAINER_WIDTH = width - ACTION_CONTAINER_MARGIN_TOP * 2;
 const CallDetails = ({navigation, route}) => {
   const {isCalling, accessToken, recipient_uid, caller_uid} =
     route.params || {};
-
-  console.log(recipient_uid, '---recipient_uid---');
-  console.log(caller_uid, '---caller_uid---');
 
   const animation = useSharedValue(0);
   const animatedStyleTop = useAnimatedStyle(() => {
@@ -84,13 +83,8 @@ const CallDetails = ({navigation, route}) => {
     // /   animate(0, 0)
     animate(Number(!animation.value), 0);
   };
-  const handleTapOut = () => {
-    'worklet';
-    animate(1, 5000);
-  };
 
   const twilioRef = useRef(null);
-
   const [status, setStatus] = useState('disconnected');
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isSpeakerMode, setIsSpeakerMode] = useState(true);
@@ -111,28 +105,31 @@ const CallDetails = ({navigation, route}) => {
     console.log('[FailToConnect]ERROR: ', error);
   };
 
-  const onEndButtonPress = async () => {
+  const onEndCall = () => {
     // if (status === 'disconnected') {
     //   return;
     // }
 
-    callEndPlay();
-
-    twilioRef.current.disconnect();
-    await deleteFirestoreCallData(recipient_uid, caller_uid);
+    callEndedSoundPlay();
     setStatus('disconnected');
-    // navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
-  };
+    twilioRef.current?.disconnect();
+    deleteFirestoreCallData(chat_id, recipient_uid, caller_uid);
 
-  const onMuteButtonPress = isMute => {
-    console.log(isMute, '---isMute---');
+    navigation.navigate(ROUTE_NAME.CHAT_SCREEN);
+  };
+  const {
+    user: {chat_id},
+  } = useAuth();
+
+  const onMuteButtonPress = () => {
     twilioRef.current
       .setLocalAudioEnabled(!isAudioEnabled)
       .then(async isEnabled => {
         setIsAudioEnabled(isEnabled);
-        await updateMuteStatusToFirestore(
+        updateMuteStatusToFirestore(
           !isEnabled,
           isCalling,
+          chat_id,
           recipient_uid,
           caller_uid,
         );
@@ -155,78 +152,77 @@ const CallDetails = ({navigation, route}) => {
   // connect call to Twilio room
   useEffect(() => {
     onConnectTwilio(accessToken);
+    toggleSoundSetup();
   }, []);
 
   // At the time of unmounting the component end call
-  useEffect(() => {
-    return () => {
-      onEndButtonPress().then(() => console.log('call ended'));
-    };
-  }, []);
+  // useEffect(() => {
+  //   return () => {
+  //     onEndCall();
+  //   };
+  // }, []);
 
   const [isFriendMute, setIsFriendMute] = useState(false);
   const [callTimer, setCallTimer] = useState(null);
 
-  //isCalling ? friendUid : selfUid
+  const selfUid = isCalling ? caller_uid : recipient_uid;
+  const friendUid = !isCalling ? caller_uid : recipient_uid;
 
   // this listener is for "call disconnected" by friend
   useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(recipient_uid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc(caller_uid);
+    const databaseRef = database().ref(
+      `chat/${chat_id}/watchers/${recipient_uid}/incoming-call/caller/${caller_uid}`,
+    );
 
     // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-      // Process the changes here
-      console.log(snapshot, '--snapshot data-- in detail screen');
+    const onValueChange = databaseRef.on('value', async snapshot => {
+      const newData = snapshot.val();
+      console.log(newData, 'newData in call-detail');
 
-      if (snapshot._exists === false) {
+      if (newData === null) {
+        onEndCall();
         return;
       }
 
-      setCallTimer(snapshot._data.callConnectedTime);
-
-      setIsFriendMute(
-        !isCalling
-          ? snapshot._data.isCallerMute
-          : snapshot._data.isRecipientMute,
-      );
+      const muteData = !isCalling
+        ? newData.isCallerMute
+        : newData.isRecipientMute;
+      setIsFriendMute(muteData);
+      setCallTimer(newData.callConnectedTime);
     });
     return () => {
-      unsubscribe(); // Unsubscribe the listener when the component unmounts
+      databaseRef.off('value', onValueChange); // Unsubscribe the listener when the component unmounts
     };
   }, []);
 
   console.log('selfUid :  -', isCalling ? caller_uid : recipient_uid);
-  const selfUid = isCalling ? caller_uid : recipient_uid;
-  const friendUid = !isCalling ? caller_uid : recipient_uid;
-  useEffect(() => {
-    const db = firebase.firestore();
-    const rootCollectionRef = db
-      .collection('users')
-      .doc(selfUid) //self uid
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc('isInCall');
 
-    // Add a real-time listener to the root collection
-    const unsubscribe = rootCollectionRef.onSnapshot(async snapshot => {
-      const isInCallFlag = snapshot?._data?.inCall;
-
-      if (isInCallFlag === false) {
-        await onEndButtonPress();
-      }
-    });
-    return () => {
-      unsubscribe(); // Unsubscribe the listener when the component unmounts
-    };
-  }, []);
+  // useEffect(() => {
+  //   const IsInCallRef = database().ref(
+  //     `users/${selfUid}/watchers/incoming-call/caller/isInCall/inCall`,
+  //   );
+  //   const IsFriendInCallRef = database().ref(
+  //     `users/${friendUid}/watchers/incoming-call/caller/isInCall/inCall`,
+  //   );
+  //
+  //   // Add a real-time listener to the root collection
+  //   const onValueChange = IsInCallRef.on('value', async snapshot => {
+  //     const IsInCall = snapshot.val();
+  //     !IsInCall ? onEndCall() : {}; // when friend disconnect the call , end call from my side
+  //   });
+  //
+  //   const onChange = IsFriendInCallRef.on('value', async snapshot => {
+  //     const IsInCall = snapshot.val();
+  //     console.log(IsInCall, '=============is in call');
+  //     console.log(friendUid, '=============friendUid============');
+  //     !IsInCall ? onEndCall() : {}; // when friend disconnect the call , end call from my side
+  //   });
+  //
+  //   return () => {
+  //     IsInCallRef.off('value', onValueChange);
+  //     IsFriendInCallRef.off('value', onChange);
+  //   };
+  // }, []);
 
   return (
     <AnimatedTouchableWithoutFeedback onPress={handleTapIn}>
@@ -293,7 +289,7 @@ const CallDetails = ({navigation, route}) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => onEndButtonPress()} // on end
+            onPress={onEndCall} // on end
             style={{
               width: 70,
               height: 70,

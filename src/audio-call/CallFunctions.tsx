@@ -1,64 +1,53 @@
-import {firebase} from '@react-native-firebase/firestore';
 import axios from 'axios';
-import {Alert} from 'react-native';
 import Sound from 'react-native-sound';
 import callHangup from './call-assets/call-hang-up.mp3';
-import callRingtone from './call-assets/call-ringtone.mp3';
+import outgoingCallRingtone from './call-assets/call-ringtone.mp3';
+import incomingCallRingtone from './call-assets/ringtone.mp3';
+
+import database from '@react-native-firebase/database';
 
 const CallHangup = new Sound(callHangup);
-const CallRingtone = new Sound(callRingtone);
+const OutgoingCallRingtone = new Sound(outgoingCallRingtone);
+const IncomingCallRingtone = new Sound(incomingCallRingtone);
 
-export const callEndPlay = () => {
+export const callEndedSoundPlay = () => {
   CallHangup.play(() => console.log('call ended sound played!'));
 };
 
-export const callRingtonePlay = () => {
-  console.log('callRingtonePlay!');
-  CallRingtone.play(() => console.log('call ringtone starts playing'));
+export const OutgoingCallRingtonePlay = () => {
+  OutgoingCallRingtone.play(() => console.log('callRingtonePlayed'));
 };
 
-export const callRingtoneStop = () => {
-  CallRingtone.stop(() => console.log('call ringtone stopped'));
+export const OutgoingCallRingtoneStop = () => {
+  OutgoingCallRingtone.stop(() => console.log('call ringtone stopped'));
 };
 
-// Get a reference to the Firestore database
-const db = firebase.firestore();
+export const IncomingCallRingtonePlay = () => {
+  IncomingCallRingtone.play(() => console.log('callRingtonePlayed'));
+};
 
-export const deleteFirestoreCallData = async (
-  recipient_uid: string,
-  caller_uid: string,
-) => {
-  const collectionRef = db
-    .collection('users')
-    .doc(recipient_uid)
-    .collection('watchers')
-    .doc('incoming-call')
-    .collection('calls')
-    .doc(caller_uid);
+export const IncomingCallRingtoneStop = () => {
+  IncomingCallRingtone.stop(() => console.log('IncomingCall Ringtone stopped'));
+};
 
-  const collectionRef2 = db
-    .collection('users')
-    .doc(caller_uid)
-    .collection('watchers')
-    .doc('incoming-call')
-    .collection('calls')
-    .doc(recipient_uid);
+export interface ICallData {
+  caller_uid: string;
+  recipient_uid: string;
+  callStatus: string;
+  roomName: string;
+  tokenToJoinRoom: string;
+  callTime: number;
+  callConnectedTime: number;
+  isCallerMute: boolean;
+  isRecipientMute: boolean;
+}
 
-  try {
-    await collectionRef.delete();
-    await collectionRef2.delete();
-
-    await updateAlreadyInCallStatus(recipient_uid, false);
-    await updateAlreadyInCallStatus(caller_uid, false);
-    console.log('Call data deleted successfully!');
-  } catch (error) {
-    console.error('Error deleting call data: ', error);
-  }
+export type ICallDataObject = {
+  [key: string]: ICallData;
 };
 
 export const getToken = async (roomName: string, identityName: string) => {
   const requestData = {roomName, identityName};
-
   const headers = {'Content-Type': 'application/json'};
 
   //http://192.168.29.244:5000/join-room
@@ -69,45 +58,69 @@ export const getToken = async (roomName: string, identityName: string) => {
         console.log(JSON.stringify(response.data.token));
         return response?.data.token;
       }
-      //Alert.alert('ok');
     })
     .catch((error: any) => {
       console.log(error);
-      Alert.alert('error', String(error));
       return null;
     });
 };
 
-export const updateCallDataFirestore = async (
-  status: string,
+const onComplete = (onCompleteData: Error | null) => {
+  console.log('onCompleteData: ', onCompleteData);
+};
+
+export const deleteFirestoreCallData = (
+  chat_id: string,
+  recipient_uid: string,
+  caller_uid: string,
+) => {
+  const collectionRef = database().ref(
+    `chat/${chat_id}/watchers/${recipient_uid}/incoming-call/caller/${caller_uid}`,
+  );
+
+  try {
+    collectionRef
+      .remove()
+      .then(() => console.log('Call data deleted successfully!'))
+      .catch(error => console.error('Error deleting call data: ', error));
+
+    updateAlreadyInCallStatus(recipient_uid, false);
+    updateAlreadyInCallStatus(caller_uid, false);
+    console.log('Call data deleted successfully!');
+  } catch (error) {
+    console.error('Error deleting call data: ', error);
+  }
+};
+
+export const updateCallDataFirestore = (
+  chat_id: string,
   recipient_uid: string,
   caller_uid: string,
 ) => {
   const updateData = {
-    callStatus: status, // Replace 'updatedStatus' with the new call status value
+    callStatus: 'connected', // Replace 'updatedStatus' with the new call status value
     callConnectedTime: new Date().getTime(),
   };
 
-  const collectionRef = db
-    .collection('users')
-    .doc(recipient_uid)
-    .collection('watchers')
-    .doc('incoming-call')
-    .collection('calls')
-    .doc(caller_uid);
+  const collectionRef = database().ref(
+    `chat/${chat_id}/watchers/${recipient_uid}/incoming-call/caller/${caller_uid}`,
+  );
 
   try {
-    await collectionRef.update(updateData);
-    console.log('Call status updated successfully!');
+    collectionRef
+      .update(updateData)
+      .then(() => console.log('Call status updated successfully!'))
+      .catch(error => console.error('Error updating call status: ', error));
 
-    await updateAlreadyInCallStatus(recipient_uid, true);
-    await updateAlreadyInCallStatus(caller_uid, true);
+    updateAlreadyInCallStatus(recipient_uid, true);
+    updateAlreadyInCallStatus(caller_uid, true);
   } catch (error) {
     console.error('Error updating call status: ', error);
   }
 };
 
-export const putCallingDataFirestore = async (
+export const setCallingData = async (
+  chat_id: string,
   selfUid: string,
   friendUid: string,
 ) => {
@@ -127,39 +140,31 @@ export const putCallingDataFirestore = async (
     };
 
     // Reference to the collection
-    const collectionRef = db
-      .collection('users')
-      .doc(friendUid)
-      .collection('watchers')
-      .doc('incoming-call')
-      .collection('calls')
-      .doc(selfUid); // caller uid
+    const collectionRef = database().ref(
+      `chat/${chat_id}/watchers/${friendUid}/incoming-call/caller/${selfUid}`,
+    );
 
     // Add data to the document within the collection
-    await collectionRef.set(sendData);
-    console.log('call Data added successfully!');
+    collectionRef
+      .set(sendData, onComplete)
+      .then(() => console.log('call Data added successfully!'));
   } catch (error) {
     console.error('Error adding call data: ', error);
   }
 };
 
-export const updateAlreadyInCallStatus = async (
+export const updateAlreadyInCallStatus = (
   recipient_uid: string,
   inCallFlag: boolean,
 ) => {
   const sendData = {inCall: inCallFlag}; // Define the data you want to add
 
-  // Reference to the collection
-  const collectionRef = db
-    .collection('users')
-    .doc(recipient_uid)
-    .collection('watchers')
-    .doc('incoming-call')
-    .collection('calls')
-    .doc('isInCall');
+  const collectionRef = database().ref(
+    `users/${recipient_uid}/watchers/incoming-call/caller/isInCall`,
+  );
 
   // Add data to the document within the collection
-  await collectionRef
+  collectionRef
     .set(sendData)
     .then(() => {
       console.log('isInCall Data updated successfully!');
@@ -169,9 +174,10 @@ export const updateAlreadyInCallStatus = async (
     });
 };
 
-export const updateMuteStatusToFirestore = async (
+export const updateMuteStatusToFirestore = (
   muteStatus: boolean,
   isCalling: boolean,
+  chat_id: string,
   recipient_uid: string,
   caller_uid: string,
 ) => {
@@ -182,17 +188,20 @@ export const updateMuteStatusToFirestore = async (
     isRecipientMute: muteStatus,
   };
   const updateData = isCalling ? updateCallerMuteData : updateRecipientMuteData;
-  const collectionRef = db
-    .collection('users')
-    .doc(recipient_uid)
-    .collection('watchers')
-    .doc('incoming-call')
-    .collection('calls')
-    .doc(caller_uid);
+
+  const collectionRef = database().ref(
+    `chat/${chat_id}/watchers/${recipient_uid}/incoming-call/caller/${caller_uid}`,
+  );
 
   try {
-    await collectionRef.update(updateData);
-    console.log('Call Mute status updated successfully!');
+    collectionRef
+      .update(updateData)
+      .then(() => {
+        console.log('updated MuteStatus To Firestore successfully!');
+      })
+      .catch(error => {
+        console.error('Error adding data: ', error);
+      });
   } catch (error) {
     console.error('Error updating call status: ', error);
   }
