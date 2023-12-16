@@ -4,7 +4,6 @@ import android.os.Bundle;
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
 import com.facebook.react.ReactRootView;
-import com.brentvatne.react.ReactVideoPackage;
 
 public class MainActivity extends ReactActivity {
 

@@ -1,6 +1,5 @@
 package com.chat;
 
-import com.dooboolab.audiorecorderplayer.RNAudioRecorderPlayerPackage;
 import android.app.Application;
 import android.content.Context;
 import com.facebook.react.PackageList;
