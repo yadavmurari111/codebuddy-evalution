@@ -1,11 +1,22 @@
-import React, {useState} from 'react';
-import {Alert, StyleSheet, Text, TextInput, View} from 'react-native';
-import Icon from 'react-native-vector-icons/AntDesign';
-//<Icon name={'closecircle'} size={24} color={'green'} />
-const LoginScreen = ({}: any) => {
-  const [correctEmail, setCorrectEmail] = useState('false');
+import React, {useEffect, useState} from 'react';
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {ROUTE_NAME} from './navigation/navigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useIsFocused} from '@react-navigation/native';
+
+const LoginScreen = ({navigation}: any) => {
+  const focused = useIsFocused();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [invalidEmail, setInvalidEmail] = useState(false);
+  const [invalidPassword, setInvalidPassword] = useState(false);
 
   const validateEmail = (emailID: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,63 +25,128 @@ const LoginScreen = ({}: any) => {
 
   const validatePassword = (Password: string) => {
     const passwordRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      /^(?=(?:[^A-Z]*[A-Z]){2})(?=(?:[^a-z]*[a-z]){2})(?=(?:\D*\d){2})(?=(?:[^\W_]*[\W_]){2})[A-Za-z\d\W_]{8,}$/;
     return passwordRegex.test(Password);
   };
 
-  const handleValidation = () => {
+  const handleValidation = async () => {
     if (!validateEmail(email)) {
-      // Alert.alert('Invalid Email', 'Please enter a valid email address');
+      setInvalidEmail(true);
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
     } else if (!validatePassword(password)) {
+      setInvalidPassword(true);
       Alert.alert(
         'Invalid Password',
         'Password must contain at least 2 uppercase letters, 2 lowercase letters, 2 numbers, and 2 special characters.',
       );
     } else {
       // Both email and password are valid, you can proceed with further actions
-      // Alert.alert('Success', 'Form submitted successfully!');
+      await saveData();
+      navigation.navigate(ROUTE_NAME.FIRSTNAME_SCREEN, {
+        data: {email, password},
+      });
     }
   };
 
+  const saveData = async () => {
+    try {
+      await AsyncStorage.setItem('screen1', JSON.stringify({email, password}));
+      console.log('Data saved successfully!');
+    } catch (error) {
+      console.error('Error saving data:', error);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      const savedata = await AsyncStorage.getItem('screen1'); // Retrieve data from AsyncStorage for screen2
+
+      if (savedata !== null) {
+        // Data found, update the state
+        console.log('-data found in AsyncStorage-');
+        const formattedData = JSON.parse(savedata);
+        setEmail(formattedData.email);
+        setPassword(formattedData.password);
+      } else {
+        console.log('No data found in AsyncStorage.');
+      }
+    } catch (error) {
+      console.error('Error retrieving data:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (focused) {
+      loadData().then(() => console.log('data loading...'));
+    }
+  }, [focused]);
+
   return (
     <View style={styles.container}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Text style={styles.title}>Email</Text>
+      <Text style={{marginTop: '40%', ...styles.title}}>
+        Email<Text style={{color: 'red'}}> *</Text>
+      </Text>
+      <View style={styles.texInputBox}>
         <TextInput
           placeholder="Enter your email"
-          onChangeText={setEmail}
-          style={{borderWidth: 1, width: '60%', borderRadius: 12}}
+          placeholderTextColor={'grey'}
+          onChangeText={text => {
+            setEmail(text);
+            setInvalidEmail(!validateEmail(text));
+          }}
+          style={{
+            ...styles.textInput,
+            borderBottomWidth: email.length > 0 ? 2 : 1,
+            borderBottomColor: email.length > 0 ? 'purple' : 'grey',
+          }}
         />
-        {email.length > 5 && (
-          <View>
-            <Icon name={'checkcircle'} size={24} color={'green'} />
-          </View>
-        )}
       </View>
-      <View
-        style={{
-          marginTop: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Text style={styles.title}>Email</Text>
+      {invalidEmail && (
+        <Text style={styles.warningText}>
+          {'Please enter a valid email address'}
+        </Text>
+      )}
+
+      <Text style={{marginTop: 40, ...styles.title}}>
+        Password<Text style={{color: 'red'}}> *</Text>
+      </Text>
+      <View style={styles.texInputBox}>
         <TextInput
           placeholder="Enter your password"
+          placeholderTextColor={'grey'}
           secureTextEntry
           value={password}
-          onChangeText={text => setPassword(text)}
+          onChangeText={text => {
+            setPassword(text);
+            setInvalidPassword(!validatePassword(text));
+          }}
+          style={{
+            borderBottomWidth: password.length > 0 ? 2 : 1,
+            borderBottomColor: password.length > 0 ? 'purple' : 'grey',
+            width: '60%',
+            fontSize: 18,
+          }}
         />
-        {email.length > 5 && (
-          <View style={{margin: 5}}>
-            <Icon name={'checkcircle'} size={24} color={'green'} />
-          </View>
-        )}
+      </View>
+      {invalidPassword && (
+        <Text style={styles.warningText}>
+          {
+            'Password must contain at least 2 uppercase letters, 2 lowercase letters, 2 numbers, and 2 special characters.'
+          }
+        </Text>
+      )}
+
+      <View style={styles.buttonBox}>
+        <TouchableOpacity
+          onPress={saveData}
+          style={{padding: 10, borderRadius: 5, backgroundColor: 'white'}}>
+          <Text style={{fontWeight: 'bold', fontSize: 16}}>Save</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleValidation}
+          style={{padding: 10, borderRadius: 5, backgroundColor: 'white'}}>
+          <Text style={{fontWeight: 'bold', fontSize: 16}}>Save and next</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -79,16 +155,27 @@ const LoginScreen = ({}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 16,
     backgroundColor: 'lightblue',
   },
   title: {
-    width: '20%',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
     color: 'black',
+  },
+  texInputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textInput: {
+    width: '80%',
+    fontSize: 18,
+  },
+  warningText: {marginTop: 5, color: 'red'},
+  buttonBox: {
+    marginTop: 60,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });
 
